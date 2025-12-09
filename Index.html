@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glory Regin Preparatory School - Management System</title>
+    <link rel="stylesheet" href="Style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Login Section (Initially Visible) -->
+    <div id="loginSection" class="auth-container">
+        <div class="auth-box">
+            <div class="auth-header">
+                <h1>Glory Regin Preparatory School</h1>
+                <p>School Management System</p>
+            </div>
+            
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" required placeholder="Enter your email">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required placeholder="Enter your password">
+                </div>
+                
+                <div class="form-group">
+                    <label for="userRole">User Role</label>
+                    <select id="userRole" name="userRole" required>
+                        <option value="">Select your role</option>
+                        <option value="admin">Administrator</option>
+                        <option value="teacher">Teacher</option>
+                        <option value="student">Student</option>
+                        <option value="parent">Parent</option>
+                    </select>
+                </div>
+                
+                <div class="form-group checkbox">
+                    <input type="checkbox" id="rememberMe" name="rememberMe">
+                    <label for="rememberMe">Remember me</label>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Login</button>
+            </form>
+            
+            <div class="auth-footer">
+                <p>Don't have an account? <a href="#" onclick="showSignup()">Sign up here</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard (Hidden Initially) -->
+    <div id="mainDashboard" class="dashboard-container hidden">
+        
+        <!-- Top Navigation Bar -->
+        <nav class="navbar">
+            <div class="navbar-container">
+                <div class="navbar-brand">
+                    <h2>Glory Regin SMS</h2>
+                    <button id="mobileNavToggle" class="mobile-nav-toggle" aria-label="Toggle menu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+                
+                <div class="navbar-menu">
+                    <ul class="navbar-nav">
+                        <li><a href="#" onclick="showSection('dashboard')" data-roles="admin,teacher,student,parent">Dashboard</a></li>
+                        <li><a href="#" onclick="showSection('students')" data-roles="admin,teacher">Students</a></li>
+                        <li><a href="#" onclick="showSection('attendance')" data-roles="admin,teacher">Attendance</a></li>
+                        <li><a href="#" onclick="showSection('grades')" data-roles="admin,teacher,student ">Grades</a></li>
+                        <li><a href="#" onclick="showSection('fees')" data-roles="admin,parent">Fees</a></li>
+                        <li><a href="#" onclick="showSection('notices')" data-roles="admin,teacher,student,parent">Notices</a></li>
+                        <li><a href="#" onclick="showSection('reports')" data-roles="admin,teacher">Reports</a></li>
+                    </ul>
+                </div>
+                
+                <div class="navbar-user">
+                    <span id="userGreeting">Welcome, User</span>
+                    <button class="btn btn-logout" onclick="logout()">Logout</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Sidebar Navigation -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Menu</h3>
+            </div>
+            
+            <ul class="sidebar-menu">
+                <li><a href="#" onclick="showSection('dashboard')" class="menu-item active" data-roles="admin,teacher,student,parent">
+                    <i class="fas fa-home"></i> Dashboard
+                </a></li>
+                <li><a href="#" onclick="showSection('students')" class="menu-item" data-roles="admin,teacher">
+                    <i class="fas fa-users"></i> Student Management
+                </a></li>
+                <li><a href="#" onclick="showSection('attendance')" class="menu-item" data-roles="admin,teacher">
+                    <i class="fas fa-clipboard-list"></i> Attendance
+                </a></li>
+                <li><a href="#" onclick="showSection('grades')" class="menu-item" data-roles="admin,teacher,student">
+                    <i class="fas fa-book"></i> Gradebook
+                </a></li>
+                <li><a href="#" onclick="showSection('fees')" class="menu-item" data-roles="admin,parent">
+                    <i class="fas fa-credit-card"></i> Fee Management
+                </a></li>
+                <li><a href="#" onclick="showSection('notices')" class="menu-item" data-roles="admin,teacher,student,parent">
+                    <i class="fas fa-bell"></i> Notices & Notifications
+                </a></li>
+                <li><a href="#" onclick="showSection('reports')" class="menu-item" data-roles="admin,teacher">
+                    <i class="fas fa-chart-bar"></i> Reports
+                </a></li>
+                <li><a href="#" onclick="showSection('settings')" class="menu-item" data-roles="admin,teacher,student,parent">
+                    <i class="fas fa-cog"></i> Settings
+                </a></li>
+            </ul>
+        </div>
+        <div id="sidebarOverlay" class="sidebar-overlay hidden"></div>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="content-section active">
+                <h2>Dashboard</h2>
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Total Students</h3>
+                            <p class="card-number" id="totalStudents">0</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon">
+                            <i class="fas fa-chalkboard-user"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Teachers</h3>
+                            <p class="card-number" id="totalTeachers">0</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon">
+                            <i class="fas fa-money-bill"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Fees Collected</h3>
+                            <p class="card-number" id="feesCollected">$0</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Attendance Rate</h3>
+                            <p class="card-number" id="attendanceRate">0%</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Students Section -->
+            <section id="students" class="content-section">
+                <h2>Student Management</h2>
+                <div class="section-header">
+                        <button class="btn btn-primary" onclick="showStudentForm()" data-roles="admin,teacher">Add New Student</button>
+                </div>
+                
+                <div class="search-bar">
+                    <input type="text" id="searchStudents" placeholder="Search students...">
+                </div>
+
+                <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Name</th>
+                            <th>Class</th>
+                            <th>Email</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentsTableBody">
+                        <tr>
+                            <td colspan="6" class="text-center">No students found</td>
+                        </tr>
+                    </tbody>
+                </table>
+                </div>
+            </section>
+
+            <!-- Attendance Section -->
+            <section id="attendance" class="content-section">
+                <h2>Attendance Tracking</h2>
+                <div class="section-header">
+                        <button class="btn btn-primary" onclick="showAttendanceForm()" data-roles="admin,teacher">Record Attendance</button>
+                </div>
+                
+                <div class="filters">
+                    <input type="date" id="attendanceDate">
+                    <select id="classFilter">
+                        <option value="">All Classes</option>
+                        <option value="Nuserary">Nuserary</option>
+                        <option value="KG1">KG 1</option>
+                        <option value="KG2">KG 2</option>
+                        <option value="Class1">Class 1</option>
+                        <option value="Class2">Class 2</option>
+                        <option value="Class3">Class 3</option>
+                        <option value="Class4">Class 4</option>
+                        <option value="Class5">Class 5</option>
+                        <option value="Class6">Class 6</option>
+                        <option value="JHS1">JHS 1</option>
+                        <option value="JHS2">JHS 2</option>
+                        <option value="JHS3">JHS 3</option>
+                    </select>
+                </div>
+                
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Student Name</th>
+                            <th>Class</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceTableBody">
+                        <tr>
+                            <td colspan="5" class="text-center">No attendance records found</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Grades Section -->
+            <section id="grades" class="content-section">
+                <h2>Gradebook</h2>
+                <div class="section-header">
+                        <button class="btn btn-primary" onclick="showGradeForm()" data-roles="teacher">Enter Grades</button>
+                </div>
+                
+                <div class="filters">
+                    <select id="classGradeFilter">
+                        <option value="">All Classes</option>
+                        <option value="Nuserary">Nuserary</option>
+                        <option value="KG1">KG 1</option>
+                        <option value="KG2">KG 2</option>
+                        <option value="Class1">Class 1</option>
+                        <option value="Class2">Class 2</option>
+                        <option value="Class3">Class 3</option>
+                        <option value="Class4">Class 4</option>
+                        <option value="Class5">Class 5</option>
+                        <option value="Class6">Class 6</option>
+                        <option value="JHS1">JHS 1</option>
+                        <option value="JHS2">JHS 2</option>
+                        <option value="JHS3">JHS 3</option>
+                    </select>
+                    <select id="subjectFilter">
+                        <option value="">All Subjects</option>
+                        <option value="Mathematics">Mathematics</option>
+                        <option value="English">English</option>
+                        <option value="Science">Science</option>
+                        <option value="History">History</option>
+                        <option value="Social Studies">Social Studies</option>
+                        <option value="History">Our World Our People</option>
+                        <option value="History">Computing</option>
+                        
+                    </select>
+                </div>
+                
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Student Name</th>
+                            <th>Subject</th>
+                            <th>Class Test</th>
+                            <th>Assignment</th>
+                            <th>Exam</th>
+                            <th>Total Grade</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="gradesTableBody">
+                        <tr>
+                            <td colspan="7" class="text-center">No grades found</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Fees Section -->
+            <section id="fees" class="content-section">
+                <h2>Fee Management</h2>
+                <div class="section-header">
+                        <button class="btn btn-primary" onclick="showFeeForm()" data-roles="admin">Add Fee Invoice</button>
+                        <button class="btn btn-secondary" onclick="showPaymentForm()" data-roles="admin">Record Payment</button>
+                        <button class="btn btn-secondary" onclick="showFeeStructureManager()" data-roles="admin">Manage Fee Structures</button>
+                        <button class="btn btn-secondary" onclick="showPaymentHistory()" data-roles="admin,teacher">Payment History</button>
+                        <button class="btn btn-danger" onclick="sendFeeReminders()" data-roles="admin">Send Reminders</button>
+                </div>
+                
+                <div class="filters">
+                    <select id="feeStatusFilter">
+                        <option value="">All Status</option>
+                        <option value="Paid">Paid</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Partial">Partial</option>
+                    </select>
+                </div>
+                
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Student Name</th>
+                            <th>Amount Due</th>
+                            <th>Amount Paid</th>
+                            <th>Balance</th>
+                            <th>Status</th>
+                            <th>Due Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="feesTableBody">
+                        <tr>
+                            <td colspan="7" class="text-center">No fee records found</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Notices Section -->
+            <section id="notices" class="content-section">
+                <h2>Notices & Notifications</h2>
+                <div class="section-header">
+                        <button class="btn btn-primary" onclick="showNoticeForm()" data-roles="admin,teacher">Create Notice</button>
+                        <button class="btn btn-secondary" onclick="showSendNotificationForm()" data-roles="admin,teacher">Send Notification</button>
+                </div>
+                
+                <div class="notices-container" id="noticesContainer">
+                    <p class="text-center">No notices available</p>
+                </div>
+            </section>
+
+            <!-- Reports Section -->
+            <section id="reports" class="content-section">
+                <h2>Reports</h2>
+                <div class="reports-grid">
+                    <div class="report-card" onclick="generateReport('student')">
+                        <h3>Student Report</h3>
+                        <p>View all student information and statistics</p>
+                    </div>
+                    
+                    <div class="report-card" onclick="generateReport('attendance')">
+                        <h3>Attendance Report</h3>
+                        <p>Generate attendance analysis and reports</p>
+                    </div>
+                    
+                    <div class="report-card" onclick="generateReport('grade')">
+                        <h3>Grade Report</h3>
+                        <p>View grade statistics and performance</p>
+                    </div>
+                    
+                    <div class="report-card" onclick="generateReport('fee')">
+                        <h3>Fee Report</h3>
+                        <p>Financial summary and payment status</p>
+                    </div>
+                    <div class="report-card" onclick="generateReport('fee_arrears')">
+                        <h3>Fee Arrears</h3>
+                        <p>List of outstanding balances and days overdue</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings" class="content-section">
+                <h2>Settings</h2>
+                <div class="settings-container">
+                    <div class="settings-section">
+                        <h3>Account Settings</h3>
+                        <form id="accountSettingsForm">
+                            <div class="form-group">
+                                <label for="settingsName">Full Name</label>
+                                <input type="text" id="settingsName" placeholder="Your full name">
+                            </div>
+                            <div class="form-group">
+                                <label for="settingsEmail">Email</label>
+                                <input type="email" id="settingsEmail" placeholder="Your email">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </form>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <h3>Change Password</h3>
+                        <form id="changePasswordForm">
+                            <div class="form-group">
+                                <label for="currentPassword">Current Password</label>
+                                <input type="password" id="currentPassword" placeholder="Current password">
+                            </div>
+                            <div class="form-group">
+                                <label for="newPassword">New Password</label>
+                                <input type="password" id="newPassword" placeholder="New password">
+                            </div>
+                            <div class="form-group">
+                                <label for="confirmPassword">Confirm Password</label>
+                                <input type="password" id="confirmPassword" placeholder="Confirm password">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Change Password</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Modal for Forms -->
+    <div id="modalOverlay" class="modal-overlay hidden">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="Javascript.js"></script>
+</body>
+</html>
