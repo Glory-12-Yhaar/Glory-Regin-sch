@@ -24,18 +24,28 @@
                 
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required placeholder="Enter your password">
+                    <div class="password-field-wrapper">
+                        <input type="password" id="password" name="password" required placeholder="Enter your password">
+                        <button type="button" class="password-toggle" onclick="togglePasswordVisibility()" aria-label="Toggle password visibility">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="form-group">
                     <label for="userRole">User Role</label>
-                    <select id="userRole" name="userRole" required>
+                    <select id="userRole" name="userRole" required onchange="toggleIdField()">
                         <option value="">Select your role</option>
                         <option value="admin">Administrator</option>
                         <option value="teacher">Teacher</option>
                         <option value="student">Student</option>
                         <option value="parent">Parent</option>
                     </select>
+                </div>
+
+                <div class="form-group" id="idField" style="display: none;">
+                    <label for="idInput" id="idLabel">ID</label>
+                    <input type="text" id="idInput" name="idInput" placeholder="Enter your ID">
                 </div>
                 
                 <div class="form-group checkbox">
@@ -69,6 +79,7 @@
                     <ul class="navbar-nav">
                         <li><a href="#" onclick="showSection('dashboard')" data-roles="admin,teacher,student,parent">Dashboard</a></li>
                         <li><a href="#" onclick="showSection('students')" data-roles="admin,teacher">Students</a></li>
+                        <li><a href="#" onclick="showSection('teachers')" data-roles="admin">Teachers</a></li>
                         <li><a href="#" onclick="showSection('attendance')" data-roles="admin,teacher">Attendance</a></li>
                         <li><a href="#" onclick="showSection('grades')" data-roles="admin,teacher,student ">Grades</a></li>
                         <li><a href="#" onclick="showSection('fees')" data-roles="admin,parent">Fees</a></li>
@@ -96,6 +107,9 @@
                 </a></li>
                 <li><a href="#" onclick="showSection('students')" class="menu-item" data-roles="admin,teacher">
                     <i class="fas fa-users"></i> Student Management
+                </a></li>
+                <li><a href="#" onclick="showSection('teachers')" class="menu-item" data-roles="admin">
+                    <i class="fas fa-chalkboard-user"></i> Teachers
                 </a></li>
                 <li><a href="#" onclick="showSection('attendance')" class="menu-item" data-roles="admin,teacher">
                     <i class="fas fa-clipboard-list"></i> Attendance
@@ -200,6 +214,38 @@
                 </div>
             </section>
 
+            <!-- Teachers Section -->
+            <section id="teachers" class="content-section" data-roles="admin">
+                <h2>Teacher Management</h2>
+                <div class="section-header">
+                    <button class="btn btn-primary" onclick="showTeacherForm()" data-roles="admin">Add New Teacher</button>
+                </div>
+                
+                <div class="search-bar">
+                    <input type="text" id="searchTeachers" placeholder="Search teachers...">
+                </div>
+
+                <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Teacher ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Subject</th>
+                            <th>Class</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teachersTableBody">
+                        <tr>
+                            <td colspan="6" class="text-center">No teachers found</td>
+                        </tr>
+                    </tbody>
+                </table>
+                </div>
+            </section>
+
             <!-- Attendance Section -->
             <section id="attendance" class="content-section">
                 <h2>Attendance Tracking</h2>
@@ -208,10 +254,10 @@
                 </div>
                 
                 <div class="filters">
-                    <input type="date" id="attendanceDate">
-                    <select id="classFilter">
+                    <input type="date" id="attendanceDate" onchange="filterAttendance()">
+                    <select id="classFilter" onchange="filterAttendance()">
                         <option value="">All Classes</option>
-                        <option value="Nuserary">Nuserary</option>
+                        <option value="Nursery">Nursery</option>
                         <option value="KG1">KG 1</option>
                         <option value="KG2">KG 2</option>
                         <option value="Class1">Class 1</option>
@@ -223,6 +269,12 @@
                         <option value="JHS1">JHS 1</option>
                         <option value="JHS2">JHS 2</option>
                         <option value="JHS3">JHS 3</option>
+                    </select>
+                    <select id="attendanceStatusFilter" onchange="filterAttendance()">
+                        <option value="">All Status</option>
+                        <option value="Present">Present</option>
+                        <option value="Absent">Absent</option>
+                        <option value="Late">Late</option>
                     </select>
                 </div>
                 
@@ -252,9 +304,9 @@
                 </div>
                 
                 <div class="filters">
-                    <select id="classGradeFilter">
+                    <select id="classGradeFilter" onchange="filterGrades()">
                         <option value="">All Classes</option>
-                        <option value="Nuserary">Nuserary</option>
+                        <option value="Nursery">Nursery</option>
                         <option value="KG1">KG 1</option>
                         <option value="KG2">KG 2</option>
                         <option value="Class1">Class 1</option>
@@ -267,16 +319,15 @@
                         <option value="JHS2">JHS 2</option>
                         <option value="JHS3">JHS 3</option>
                     </select>
-                    <select id="subjectFilter">
+                    <select id="subjectFilter" onchange="filterGrades()">
                         <option value="">All Subjects</option>
                         <option value="Mathematics">Mathematics</option>
                         <option value="English">English</option>
                         <option value="Science">Science</option>
                         <option value="History">History</option>
                         <option value="Social Studies">Social Studies</option>
-                        <option value="History">Our World Our People</option>
-                        <option value="History">Computing</option>
-                        
+                        <option value="Our World Our People">Our World Our People</option>
+                        <option value="Computing">Computing</option>
                     </select>
                 </div>
                 
@@ -312,7 +363,22 @@
                 </div>
                 
                 <div class="filters">
-                    <select id="feeStatusFilter">
+                    <select id="classFeeFilter" onchange="filterFees()">
+                        <option value="">All Classes</option>
+                        <option value="Nursery">Nuserary</option>
+                        <option value="KG1">KG 1</option>
+                        <option value="KG2">KG 2</option>
+                        <option value="Class1">Class 1</option>
+                        <option value="Class2">Class 2</option>
+                        <option value="Class3">Class 3</option>
+                        <option value="Class4">Class 4</option>
+                        <option value="Class5">Class 5</option>
+                        <option value="Class6">Class 6</option>
+                        <option value="JHS1">JHS 1</option>
+                        <option value="JHS2">JHS 2</option>
+                        <option value="JHS3">JHS 3</option>
+                    </select>
+                    <select id="feeStatusFilter" onchange="filterFees()">
                         <option value="">All Status</option>
                         <option value="Paid">Paid</option>
                         <option value="Pending">Pending</option>

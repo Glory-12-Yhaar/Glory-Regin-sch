@@ -37,16 +37,101 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     const userRole = document.getElementById('userRole').value;
+    const idInput = document.getElementById('idInput').value;
     const rememberMe = document.getElementById('rememberMe').checked;
     
     // Basic validation
-    if (!email || !password || !userRole) {
-        showToast('Please fill all fields', 'error');
+    if (!userRole) {
+        showToast('Please select a user role', 'error');
         return;
     }
-    
-    // Simulate authentication (in real app, would connect to backend)
-    if (validateLogin(email, password, userRole)) {
+
+    // Parent login: verify student ID instead of password
+    if (userRole === 'parent') {
+        if (!idInput) {
+            showToast('Please enter student ID', 'error');
+            return;
+        }
+        const student = students.find(s => s.id === idInput.trim().toUpperCase());
+        if (!student) {
+            showToast('Invalid Student ID', 'error');
+            return;
+        }
+        // Parent login successful
+        currentUser = {
+            email: email || `parent_${student.id}@school.local`,
+            role: userRole,
+            name: email.split('@')[0] || 'Parent',
+            studentId: student.id,
+            studentName: student.name
+        };
+        
+        if (rememberMe) {
+            localStorage.setItem('userEmail', currentUser.email);
+            localStorage.setItem('userRole', userRole);
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        }
+        
+        showDashboard();
+        showToast(`Welcome, parent of ${student.name}!`, 'success');
+    } else if (userRole === 'teacher') {
+        if (!idInput) {
+            showToast('Please enter teacher ID', 'error');
+            return;
+        }
+        const teacher = teachers.find(t => t.id === idInput.trim().toUpperCase());
+        if (!teacher) {
+            showToast('Invalid Teacher ID', 'error');
+            return;
+        }
+        // Teacher login successful
+        currentUser = {
+            email: teacher.email,
+            role: userRole,
+            name: teacher.name,
+            teacherId: teacher.id
+        };
+        
+        if (rememberMe) {
+            localStorage.setItem('userEmail', teacher.email);
+            localStorage.setItem('userRole', userRole);
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        }
+        
+        showDashboard();
+        showToast(`Welcome, ${teacher.name}!`, 'success');
+    } else if (userRole === 'student') {
+        if (!idInput) {
+            showToast('Please enter student ID', 'error');
+            return;
+        }
+        const student = students.find(s => s.id === idInput.trim().toUpperCase());
+        if (!student) {
+            showToast('Invalid Student ID', 'error');
+            return;
+        }
+        // Student login successful
+        currentUser = {
+            email: student.email,
+            role: userRole,
+            name: student.name,
+            studentId: student.id,
+            studentClass: student.class
+        };
+        
+        if (rememberMe) {
+            localStorage.setItem('userEmail', student.email);
+            localStorage.setItem('userRole', userRole);
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        }
+        
+        showDashboard();
+        showToast(`Welcome, ${student.name}!`, 'success');
+    } else if (!email || !password) {
+        showToast('Please fill all required fields', 'error');
+        return;
+    } else if (validateLogin(email, password, userRole)) {
+        // Standard login for admin with email and password
         currentUser = {
             email: email,
             role: userRole,
@@ -65,6 +150,50 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
         showToast('Invalid email or password', 'error');
     }
 });
+
+// Toggle ID field visibility and label based on role selection
+function toggleIdField() {
+    const userRole = document.getElementById('userRole').value;
+    const idField = document.getElementById('idField');
+    const idLabel = document.getElementById('idLabel');
+    const idInput = document.getElementById('idInput');
+    
+    if (userRole === 'parent') {
+        idField.style.display = 'block';
+        idLabel.textContent = 'Student ID';
+        idInput.placeholder = "Enter your ward's student ID (e.g., STU001)";
+        idInput.required = true;
+    } else if (userRole === 'teacher') {
+        idField.style.display = 'block';
+        idLabel.textContent = 'Teacher ID';
+        idInput.placeholder = 'Enter your teacher ID (e.g., TCH001)';
+        idInput.required = true;
+    } else if (userRole === 'student') {
+        idField.style.display = 'block';
+        idLabel.textContent = 'Student ID';
+        idInput.placeholder = 'Enter your student ID (e.g., STU001)';
+        idInput.required = true;
+    } else {
+        idField.style.display = 'none';
+        idInput.required = false;
+        idInput.value = '';
+    }
+}
+
+function togglePasswordVisibility() {
+    const passwordInput = document.getElementById('password');
+    const toggleButton = document.querySelector('.password-toggle i');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleButton.classList.remove('fa-eye');
+        toggleButton.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        toggleButton.classList.remove('fa-eye-slash');
+        toggleButton.classList.add('fa-eye');
+    }
+}
 
 function validateLogin(email, password, role) {
     // Simple validation - in production, verify with backend
@@ -169,8 +298,13 @@ function showSection(sectionId) {
         section.classList.remove('active');
     });
     
-    // Remove active class from all menu items
+    // Remove active class from all menu items (sidebar)
     document.querySelectorAll('.menu-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Remove active class from all navbar items
+    document.querySelectorAll('.navbar-nav a').forEach(item => {
         item.classList.remove('active');
     });
     
@@ -180,15 +314,26 @@ function showSection(sectionId) {
         section.classList.add('active');
     }
     
-    // Mark menu item as active
+    // Mark sidebar menu item as active
     const activeMenuItem = document.querySelector(`a[onclick="showSection('${sectionId}')"]`);
     if (activeMenuItem) {
-        activeMenuItem.parentElement.classList.add('active');
+        activeMenuItem.classList.add('active');
+        if (activeMenuItem.parentElement) {
+            activeMenuItem.parentElement.classList.add('active');
+        }
     }
+    
+    // Also mark navbar item as active
+    const navbarItems = document.querySelectorAll(`.navbar-nav a[onclick="showSection('${sectionId}')"]`);
+    navbarItems.forEach(item => {
+        item.classList.add('active');
+    });
     
     // Load data based on section
     if (sectionId === 'students') {
         loadStudents();
+    } else if (sectionId === 'teachers') {
+        loadTeachers();
     } else if (sectionId === 'attendance') {
         loadAttendance();
     } else if (sectionId === 'grades') {
@@ -268,7 +413,7 @@ function displayStudents(studentList) {
             <td data-label="Name">${student.name}</td>
             <td data-label="Class">${student.class}</td>
             <td data-label="Email">${student.email}</td>
-            <td data-label="Status"><span class="badge ${student.status.toLowerCase()}">${student.status}</span></td>
+            <td data-label="Status"><span class="badge ${student.status.toLowerCase()}" onclick="toggleStudentStatus('${student.id}')" title="Click to toggle status">${student.status}</span></td>
             <td data-label="Actions">
                 <button class="btn btn-small btn-primary" onclick="editStudent('${student.id}')">Edit</button>
                 <button class="btn btn-small btn-danger" onclick="deleteStudent('${student.id}')">Delete</button>
@@ -294,7 +439,7 @@ function showStudentForm() {
                 <label for="studentClass">Class</label>
                 <select id="studentClass" required>
                     <option value="">All Classes</option>
-                    <option value="Nuserary">Nuserary</option>
+                    <option value="Nursery">Nuserary</option>
                     <option value="KG1">KG 1</option>
                     <option value="KG2">KG 2</option>
                     <option value="Class1">Class 1</option>
@@ -348,12 +493,28 @@ function saveStudent(event) {
         // Update existing
         const student = students.find(s => s.id === editingStudentId);
         if (student) {
+            const oldName = student.name;
             student.name = name;
             student.email = email;
             student.class = studentClass;
             student.phone = phone;
             student.address = address;
             saveState();
+            
+            // Update all references in attendance, grades, and fees if name changed
+            if (oldName !== name) {
+                attendance.forEach(att => {
+                    if (att.student === oldName) att.student = name;
+                });
+                grades.forEach(g => {
+                    if (g.student === oldName) g.student = name;
+                });
+                fees.forEach(f => {
+                    if (f.student === oldName) f.student = name;
+                });
+                saveState();
+            }
+            
             showToast('Student updated successfully', 'success');
             // notify listeners about update
             document.dispatchEvent(new CustomEvent('studentsUpdated', { detail: { action: 'update', student } }));
@@ -387,17 +548,36 @@ function editStudent(id) {
 }
 
 function deleteStudent(id) {
-    showConfirm('Are you sure you want to delete this student?', function(confirmed) {
+    showConfirm('Are you sure you want to delete this student? All associated records (attendance, grades, fees) will also be removed.', function(confirmed) {
         if (!confirmed) return;
         const removed = students.find(s => s.id === id);
+        const removedName = removed ? removed.name : '';
+        
+        // Remove from students array
         students = students.filter(s => s.id !== id);
+        
+        // Also remove all related records to maintain data integrity
+        attendance = attendance.filter(att => att.student !== removedName);
+        grades = grades.filter(g => g.student !== removedName);
+        fees = fees.filter(f => f.student !== removedName);
+        
         saveState();
-        showToast('Student deleted successfully', 'success');
+        showToast('Student and all related records deleted successfully', 'success');
         // notify listeners so open selects and UI update immediately
         document.dispatchEvent(new CustomEvent('studentsUpdated', { detail: { action: 'delete', student: removed } }));
         loadStudents();
         loadDashboardData();
     });
+}
+
+function toggleStudentStatus(id) {
+    const student = students.find(s => s.id === id);
+    if (student) {
+        student.status = student.status === 'Active' ? 'Inactive' : 'Active';
+        saveState();
+        showToast(`${student.name} is now ${student.status}`, 'success');
+        loadStudents();
+    }
 }
 
 // Search students
@@ -439,17 +619,37 @@ function displayAttendance(attendanceList) {
         return;
     }
     
-    tbody.innerHTML = attendanceList.map((att, index) => `
+    tbody.innerHTML = attendanceList.map((att) => {
+        // Find the actual index in the original attendance array
+        const actualIndex = attendance.findIndex(a => a.student === att.student && a.class === att.class && a.date === att.date && a.status === att.status);
+        return `
         <tr>
             <td>${att.student}</td>
             <td>${att.class}</td>
             <td>${att.date}</td>
             <td><span class="badge ${att.status.toLowerCase()}">${att.status}</span></td>
             <td>
-                <button class="btn btn-small btn-primary" onclick="editAttendance(${index})">Edit</button>
+                <button class="btn btn-small btn-primary" onclick="editAttendance(${actualIndex})">Edit</button>
+                <button class="btn btn-small btn-danger" onclick="deleteAttendance(${actualIndex})">Delete</button>
             </td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
+}
+
+function filterAttendance() {
+    const dateFilter = document.getElementById('attendanceDate').value;
+    const classFilter = document.getElementById('classFilter').value;
+    const statusFilter = document.getElementById('attendanceStatusFilter').value;
+    
+    const filtered = attendance.filter(att => {
+        const dateMatch = !dateFilter || att.date === dateFilter;
+        const classMatch = !classFilter || att.class === classFilter;
+        const statusMatch = !statusFilter || att.status === statusFilter;
+        return dateMatch && classMatch && statusMatch;
+    });
+    
+    displayAttendance(filtered);
 }
 
 function showAttendanceForm() {
@@ -461,7 +661,7 @@ function showAttendanceForm() {
                 <label for="attendanceClass">Class</label>
                 <select id="attendanceClass" required>
                     <option value="">All Classes</option>
-                    <option value="Nuserary">Nuserary</option>
+                    <option value="Nursery">Nuserary</option>
                     <option value="KG1">KG 1</option>
                     <option value="KG2">KG 2</option>
                     <option value="Class1">Class 1</option>
@@ -606,6 +806,16 @@ function editAttendance(index) {
     }, 20);
 }
 
+function deleteAttendance(index) {
+    showConfirm('Are you sure you want to delete this attendance record?', function(confirmed) {
+        if (!confirmed) return;
+        attendance.splice(index, 1);
+        saveState();
+        showToast('Attendance record deleted successfully', 'success');
+        loadAttendance();
+    });
+}
+
 // ========================================
 // Grades Functions
 // ========================================
@@ -631,7 +841,10 @@ function displayGrades(gradesList) {
         return;
     }
     
-    tbody.innerHTML = gradesList.map((grade, index) => `
+    tbody.innerHTML = gradesList.map((grade) => {
+        // Find the actual index in the original grades array
+        const actualIndex = grades.findIndex(g => g.student === grade.student && g.subject === grade.subject);
+        return `
         <tr>
             <td>${grade.student}</td>
             <td>${grade.subject}</td>
@@ -640,10 +853,29 @@ function displayGrades(gradesList) {
             <td>${grade.exam}</td>
             <td>${grade.total}</td>
             <td>
-                <button class="btn btn-small btn-primary" onclick="editGrade(${index})">Edit</button>
+                <button class="btn btn-small btn-primary" onclick="editGrade(${actualIndex})">Edit</button>
+                <button class="btn btn-small btn-danger" onclick="deleteGrade(${actualIndex})">Delete</button>
             </td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
+}
+
+function filterGrades() {
+    const classFilter = document.getElementById('classGradeFilter').value;
+    const subjectFilter = document.getElementById('subjectFilter').value;
+    
+    const filtered = grades.filter(grade => {
+        // Get the student's class
+        const student = students.find(s => s.name === grade.student);
+        const studentClass = student ? student.class : '';
+        
+        const classMatch = !classFilter || studentClass === classFilter;
+        const subjectMatch = !subjectFilter || grade.subject === subjectFilter;
+        return classMatch && subjectMatch;
+    });
+    
+    displayGrades(filtered);
 }
 
 function showGradeForm() {
@@ -712,16 +944,27 @@ function editGrade(index) {
     editingGradeIndex = index;
     const g = grades[index];
     const modalBody = document.getElementById('modalBody');
+    // Find the student ID from the stored name (backwards compatible)
+    const matchedStudent = students.find(s => s.name === g.student || s.id === g.student);
+    const studentIdVal = matchedStudent ? matchedStudent.id : '';
     modalBody.innerHTML = `
         <h3>Edit Grades</h3>
         <form id="gradeEditForm" onsubmit="saveGrade(event)">
             <div class="form-group">
                 <label for="gradeStudent">Student</label>
-                <input type="text" id="gradeStudent" value="${g.student}" required>
+                <select id="gradeStudent" class="student-select" required>
+                    <option value="">Select Student</option>
+                    ${students.map(s => `<option value="${s.id}" ${s.id === studentIdVal ? 'selected' : ''} data-class="${s.class}">${s.name} (${s.class})</option>`).join('')}
+                </select>
             </div>
             <div class="form-group">
                 <label for="gradeSubject">Subject</label>
-                <input type="text" id="gradeSubject" value="${g.subject}" required>
+                <select id="gradeSubject" required>
+                    <option value="Mathematics" ${g.subject === 'Mathematics' ? 'selected' : ''}>Mathematics</option>
+                    <option value="English" ${g.subject === 'English' ? 'selected' : ''}>English</option>
+                    <option value="Science" ${g.subject === 'Science' ? 'selected' : ''}>Science</option>
+                    <option value="History" ${g.subject === 'History' ? 'selected' : ''}>History</option>
+                </select>
             </div>
             <div class="form-group">
                 <label for="classTest">Class Test (out of 20)</label>
@@ -739,6 +982,21 @@ function editGrade(index) {
         </form>
     `;
     openModal();
+    setTimeout(() => {
+        if (document.getElementById('gradeStudent')) {
+            document.getElementById('gradeStudent').value = studentIdVal;
+        }
+    }, 20);
+}
+
+function deleteGrade(index) {
+    showConfirm('Are you sure you want to delete this grade record?', function(confirmed) {
+        if (!confirmed) return;
+        grades.splice(index, 1);
+        saveState();
+        showToast('Grade record deleted successfully', 'success');
+        loadGrades();
+    });
 }
 
 // ========================================
@@ -748,10 +1006,10 @@ function editGrade(index) {
 function loadFees() {
     if (!fees || fees.length === 0) {
         fees = [
-            { student: 'Adepa Nora', amountDue: 50000, amountPaid: 50000, balance: 0, status: 'Paid', dueDate: '2025-12-31' },
-            { student: 'Nyarko Smith', amountDue: 50000, amountPaid: 30000, balance: 20000, status: 'Partial', dueDate: '2025-12-31' },
-            { student: 'Owusu Johnson', amountDue: 50000, amountPaid: 0, balance: 50000, status: 'Pending', dueDate: '2025-12-31' },
-            { student: 'Yeboah Sarah', amountDue: 50000, amountPaid: 50000, balance: 0, status: 'Paid', dueDate: '2025-12-31' }
+            { student: 'Adepa Nora', amountDue: 500, amountPaid: 500, balance: 0, status: 'Paid', dueDate: '2025-12-31' },
+            { student: 'Nyarko Smith', amountDue: 500, amountPaid: 300, balance: 200, status: 'Partial', dueDate: '2025-12-31' },
+            { student: 'Owusu Johnson', amountDue: 500, amountPaid: 0, balance: 500, status: 'Pending', dueDate: '2025-12-31' },
+            { student: 'Yeboah Sarah', amountDue: 500, amountPaid: 500, balance: 0, status: 'Paid', dueDate: '2025-12-31' }
         ];
         saveState();
     }
@@ -762,8 +1020,9 @@ function loadFees() {
 function loadFeeStructures() {
     if (!feeStructures || feeStructures.length === 0) {
         feeStructures = [
-            { id: 'FS001', name: 'Tuition - JhS 1', class: 'JHS 1', amount: 500, currency: 'GHS' },
-            { id: 'FS002', name: 'Tuition - JHS 3', class: 'JHS 3', amount: 700, currency: 'GHS' }
+            { id: 'FS001', name: 'Tuition - JHS 1', class: 'JHS 1', amount: 500, currency: 'GHS' },
+            { id: 'FS002', name: 'Tuition - JHS 2', class: 'JHS 2', amount: 600, currency: 'GHS' },
+            { id: 'FS003', name: 'Tuition - JHS 3', class: 'JHS 3', amount: 700, currency: 'GHS' }
         ];
         saveState();
     }
@@ -783,7 +1042,10 @@ function displayFees(feesList) {
         return;
     }
     
-    tbody.innerHTML = feesList.map((fee, index) => `
+    tbody.innerHTML = feesList.map((fee) => {
+        // Find the actual index in the original fees array
+        const actualIndex = fees.findIndex(f => f.student === fee.student && f.amountDue === fee.amountDue && f.dueDate === fee.dueDate);
+        return `
         <tr>
             <td data-label="Student">${fee.student}</td>
             <td data-label="Amount Due">${formatCurrency(fee.amountDue, fee.currency)}</td>
@@ -792,12 +1054,31 @@ function displayFees(feesList) {
             <td data-label="Status"><span class="badge ${fee.status.toLowerCase()}">${fee.status}</span></td>
             <td data-label="Due Date">${fee.dueDate}</td>
             <td data-label="Action">
-                <button class="btn btn-small btn-primary" onclick="editFee(${index})">Pay</button>
-                <button class="btn btn-small btn-secondary" onclick="downloadReceipt(${index})">Receipt</button>
-                <button class="btn btn-small btn-secondary" onclick="showInvoiceDetails(${index})">Details</button>
+                <button class="btn btn-small btn-primary" onclick="editFee(${actualIndex})">Pay</button>
+                <button class="btn btn-small btn-secondary" onclick="downloadReceipt(${actualIndex})">Receipt</button>
+                <button class="btn btn-small btn-secondary" onclick="showInvoiceDetails(${actualIndex})">Details</button>
+                <button class="btn btn-small btn-danger" onclick="deleteFee(${actualIndex})">Delete</button>
             </td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
+}
+
+function filterFees() {
+    const classFilter = document.getElementById('classFeeFilter').value;
+    const statusFilter = document.getElementById('feeStatusFilter').value;
+    
+    const filtered = fees.filter(fee => {
+        // Get the student's class
+        const student = students.find(s => s.name === fee.student);
+        const studentClass = student ? student.class : '';
+        
+        const classMatch = !classFilter || studentClass === classFilter;
+        const statusMatch = !statusFilter || fee.status === statusFilter;
+        return classMatch && statusMatch;
+    });
+    
+    displayFees(filtered);
 }
 
 function formatCurrency(amount, currency) {
@@ -1198,6 +1479,16 @@ function simulateOnlinePayment(index) {
         closeModal();
         loadFees();
     }, 1200);
+}
+
+function deleteFee(index) {
+    showConfirm('Are you sure you want to delete this fee invoice?', function(confirmed) {
+        if (!confirmed) return;
+        fees.splice(index, 1);
+        saveState();
+        showToast('Fee invoice deleted successfully', 'success');
+        loadFees();
+    });
 }
 
 // ========================================
@@ -1683,11 +1974,49 @@ function loadState() {
         users = state.users || [];
         feeStructures = state.feeStructures || [];
         paymentHistory = state.paymentHistory || [];
+        
+        // Validate and sync student names across all modules
+        validateStudentNames();
+        
         return true;
     } catch (e) {
         console.error('Failed to load state', e);
         return false;
     }
+}
+
+// Validate that all student references have correct names matching the student database
+function validateStudentNames() {
+    // Check attendance records
+    attendance.forEach(att => {
+        if (att.student) {
+            const student = students.find(s => s.name === att.student);
+            if (!student) {
+                // Name mismatch - try to find by partial match or remove
+                console.warn('Attendance: Student name mismatch -', att.student);
+            }
+        }
+    });
+    
+    // Check grades records
+    grades.forEach(g => {
+        if (g.student) {
+            const student = students.find(s => s.name === g.student);
+            if (!student) {
+                console.warn('Grades: Student name mismatch -', g.student);
+            }
+        }
+    });
+    
+    // Check fees records
+    fees.forEach(f => {
+        if (f.student) {
+            const student = students.find(s => s.name === f.student);
+            if (!student) {
+                console.warn('Fees: Student name mismatch -', f.student);
+            }
+        }
+    });
 }
 
 // Restore session (if remember me was used)
@@ -1709,6 +2038,225 @@ function restoreSession() {
         }
     }
 }
+
+// ========================================
+// Teacher Management Functions
+// ========================================
+
+function loadTeachers() {
+    if (!teachers || teachers.length === 0) {
+        // Seed sample teachers if none present
+        teachers = [
+            { id: 'TCH001', name: 'Mr. Kwame Asante', email: 'kwame@gmail.com', subjects: ['Mathematics'], classes: ['JHS 1'], status: 'Active' },
+            { id: 'TCH002', name: 'Mrs. Ama Agyeman', email: 'ama@gmail.com', subjects: ['English'], classes: ['JHS 2'], status: 'Active' },
+            { id: 'TCH003', name: 'Mr. Kofi Mensah', email: 'kofi@gmail.com', subjects: ['Science'], classes: ['JHS 1'], status: 'Active' }
+        ];
+        saveState();
+    }
+
+    displayTeachers(teachers);
+}
+
+function displayTeachers(teacherList) {
+    const tbody = document.getElementById('teachersTableBody');
+    
+    if (teacherList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No teachers found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = teacherList.map(teacher => `
+        <tr>
+            <td data-label="Teacher ID">${teacher.id}</td>
+            <td data-label="Name">${teacher.name}</td>
+            <td data-label="Email">${teacher.email}</td>
+            <td data-label="Subjects">${Array.isArray(teacher.subjects) ? teacher.subjects.join(', ') : teacher.subject || 'N/A'}</td>
+            <td data-label="Classes">${Array.isArray(teacher.classes) ? teacher.classes.join(', ') : teacher.class || 'N/A'}</td>
+            <td data-label="Status"><span class="badge ${teacher.status.toLowerCase()}" onclick="toggleTeacherStatus('${teacher.id}')" title="Click to toggle status">${teacher.status}</span></td>
+            <td data-label="Actions">
+                <button class="btn btn-small btn-primary" onclick="editTeacher('${teacher.id}')">Edit</button>
+                <button class="btn btn-small btn-danger" onclick="deleteTeacher('${teacher.id}')">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function showTeacherForm() {
+    const modalBody = document.getElementById('modalBody');
+    const editingId = window.editingTeacherId || null;
+    
+    const subjects = ['Mathematics', 'English', 'Science', 'Social Studies', 'Physical Education', 'Computer Science', 'Art', 'Music', 'History', 'Geography'];
+    const classes = ['Nuserary', 'KG1', 'KG2', 'Class1', 'Class2', 'Class3', 'Class4', 'Class5', 'Class6', 'JHS1', 'JHS2', 'JHS3'];
+    
+    let subjectsHTML = subjects.map(subject => `
+        <label style="display: inline-flex; align-items: center; margin-right: 1rem; margin-bottom: 0.5rem; cursor: pointer;">
+            <input type="checkbox" id="subject_${subject}" value="${subject}" style="margin-right: 0.5rem; cursor: pointer;">
+            ${subject}
+        </label>
+    `).join('');
+    
+    let classesHTML = classes.map(cls => `
+        <label style="display: inline-flex; align-items: center; margin-right: 1rem; margin-bottom: 0.5rem; cursor: pointer;">
+            <input type="checkbox" id="class_${cls}" value="${cls}" style="margin-right: 0.5rem; cursor: pointer;">
+            ${cls}
+        </label>
+    `).join('');
+    
+    modalBody.innerHTML = `
+        <h3>${editingId ? 'Edit Teacher' : 'Add New Teacher'}</h3>
+        <form id="teacherForm" onsubmit="saveTeacher(event)">
+            <div class="form-group">
+                <label for="teacherName">Full Name</label>
+                <input type="text" id="teacherName" required>
+            </div>
+            <div class="form-group">
+                <label for="teacherEmail">Email</label>
+                <input type="email" id="teacherEmail" required>
+            </div>
+            <div class="form-group">
+                <label>Subjects (check all that apply)</label>
+                <div style="border: 1px solid #bdc3c7; padding: 1rem; border-radius: 4px; background-color: #f9f9f9;">
+                    ${subjectsHTML}
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Classes (check all that apply)</label>
+                <div style="border: 1px solid #bdc3c7; padding: 1rem; border-radius: 4px; background-color: #f9f9f9;">
+                    ${classesHTML}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">${editingId ? 'Update Teacher' : 'Save Teacher'}</button>
+        </form>
+    `;
+    openModal();
+
+    // If editing, populate form
+    if (editingId) {
+        const teacher = teachers.find(t => t.id === editingId);
+        if (teacher) {
+            setTimeout(() => {
+                document.getElementById('teacherName').value = teacher.name || '';
+                document.getElementById('teacherEmail').value = teacher.email || '';
+                
+                // Set checked subjects
+                const teacherSubjects = Array.isArray(teacher.subjects) ? teacher.subjects : [teacher.subject || ''];
+                subjects.forEach(subject => {
+                    const checkbox = document.getElementById(`subject_${subject}`);
+                    if (checkbox) {
+                        checkbox.checked = teacherSubjects.includes(subject);
+                    }
+                });
+                
+                // Set checked classes
+                const teacherClasses = Array.isArray(teacher.classes) ? teacher.classes : [teacher.class || ''];
+                classes.forEach(cls => {
+                    const checkbox = document.getElementById(`class_${cls}`);
+                    if (checkbox) {
+                        checkbox.checked = teacherClasses.includes(cls);
+                    }
+                });
+            }, 50);
+        }
+    }
+}
+
+function saveTeacher(event) {
+    event.preventDefault();
+    const name = document.getElementById('teacherName').value.trim();
+    const email = document.getElementById('teacherEmail').value.trim();
+    
+    // Get checked subjects
+    const subjectCheckboxes = document.querySelectorAll('input[id^="subject_"]:checked');
+    const subjects = Array.from(subjectCheckboxes).map(cb => cb.value);
+    
+    // Get checked classes
+    const classCheckboxes = document.querySelectorAll('input[id^="class_"]:checked');
+    const classes = Array.from(classCheckboxes).map(cb => cb.value);
+    
+    const editingId = window.editingTeacherId || null;
+
+    if (!name || !email || subjects.length === 0 || classes.length === 0) {
+        showToast('Please fill all teacher fields and select at least one subject and class', 'error');
+        return;
+    }
+
+    if (editingId) {
+        // Update existing teacher
+        const teacher = teachers.find(t => t.id === editingId);
+        if (teacher) {
+            teacher.name = name;
+            teacher.email = email;
+            teacher.subjects = subjects;
+            teacher.classes = classes;
+            saveState();
+            showToast('Teacher updated successfully', 'success');
+        }
+        window.editingTeacherId = null;
+    } else {
+        // Add new teacher
+        const newTeacher = {
+            id: 'TCH' + String(teachers.length + 1).padStart(3, '0'),
+            name: name,
+            email: email,
+            subjects: subjects,
+            classes: classes,
+            status: 'Active'
+        };
+        teachers.push(newTeacher);
+        saveState();
+        showToast('Teacher added successfully', 'success');
+    }
+
+    closeModal();
+    loadTeachers();
+    loadDashboardData();
+}
+
+function editTeacher(id) {
+    window.editingTeacherId = id;
+    showTeacherForm();
+}
+
+function deleteTeacher(id) {
+    showConfirm('Are you sure you want to delete this teacher?', function(confirmed) {
+        if (!confirmed) return;
+        teachers = teachers.filter(t => t.id !== id);
+        saveState();
+        showToast('Teacher deleted successfully', 'success');
+        loadTeachers();
+        loadDashboardData();
+    });
+}
+
+function toggleTeacherStatus(id) {
+    const teacher = teachers.find(t => t.id === id);
+    if (teacher) {
+        teacher.status = teacher.status === 'Active' ? 'Inactive' : 'Active';
+        saveState();
+        showToast(`${teacher.name} is now ${teacher.status}`, 'success');
+        loadTeachers();
+    }
+}
+
+// Search teachers
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('searchTeachers')) {
+        document.getElementById('searchTeachers').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredTeachers = teachers.filter(teacher => {
+                const subjects = Array.isArray(teacher.subjects) ? teacher.subjects.join(' ').toLowerCase() : (teacher.subject || '').toLowerCase();
+                const classes = Array.isArray(teacher.classes) ? teacher.classes.join(' ').toLowerCase() : (teacher.class || '').toLowerCase();
+                return (
+                    teacher.name.toLowerCase().includes(searchTerm) ||
+                    teacher.id.toLowerCase().includes(searchTerm) ||
+                    subjects.includes(searchTerm) ||
+                    classes.includes(searchTerm)
+                );
+            });
+            displayTeachers(filteredTeachers);
+        });
+    }
+});
 
 // Apply UI/UX changes based on role
 function applyRoleUI(role) {
