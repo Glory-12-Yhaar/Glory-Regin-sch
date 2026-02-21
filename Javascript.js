@@ -322,6 +322,7 @@ function saveSignup(e) {
 // ========================================
 
 function showDashboard() {
+    document.getElementById('homePage').classList.add('hidden');
     document.getElementById('loginSection').classList.add('hidden');
     document.getElementById('mainDashboard').classList.remove('hidden');
     updateUserGreeting();
@@ -1154,19 +1155,21 @@ function displayAttendance(attendanceList) {
     const tbody = document.getElementById('attendanceTableBody');
     
     if (attendanceList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center">No attendance records found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No attendance records found</td></tr>';
         return;
     }
     
     tbody.innerHTML = attendanceList.map((att) => {
         // Find the actual index in the original attendance array
         const actualIndex = attendance.findIndex(a => a.student === att.student && a.class === att.class && a.date === att.date && a.status === att.status);
+        const noteText = att.note ? att.note : 'No note';
         return `
         <tr>
             <td data-label="Student Name">${att.student}</td>
             <td data-label="Class">${att.class}</td>
             <td data-label="Date">${att.date}</td>
             <td data-label="Status"><span class="badge ${att.status.toLowerCase()}">${att.status}</span></td>
+            <td data-label="Note"><span title="${noteText}" style="cursor: help;">${att.note ? att.note.substring(0, 30) + (att.note.length > 30 ? '...' : '') : '-'}</span></td>
             <td data-label="Action">
                 <button class="btn btn-small btn-primary" onclick="editAttendance(${actualIndex})">Edit</button>
                 <button class="btn btn-small btn-danger" onclick="deleteAttendance(${actualIndex})">Delete</button>
@@ -1181,12 +1184,19 @@ function filterAttendance() {
     const classFilter = document.getElementById('classFilter').value;
     const statusFilter = document.getElementById('attendanceStatusFilter').value;
     
-    const filtered = attendance.filter(att => {
+    let filtered = attendance.filter(att => {
         const dateMatch = !dateFilter || att.date === dateFilter;
         const classMatch = !classFilter || att.class === classFilter;
         const statusMatch = !statusFilter || att.status === statusFilter;
         return dateMatch && classMatch && statusMatch;
     });
+    
+    // Apply role-based filtering for teachers
+    if (currentUser && currentUser.role === 'teacher') {
+        const teacher = teachers.find(t => t.id === currentUser.teacherId);
+        const myClasses = teacher && teacher.classes ? teacher.classes : [];
+        filtered = filtered.filter(att => myClasses.includes(att.class));
+    }
     
     displayAttendance(filtered);
 }
@@ -1198,141 +1208,194 @@ function showAttendanceForm() {
     }
     
     // Get available classes based on role
-    let availableClasses = ['Nursery', 'KG1', 'KG2', 'Class1', 'Class2', 'Class3', 'Class4', 'Class5', 'Class6', 'JHS1', 'JHS2', 'JHS3'];
+    let availableClasses = ['Nursery', 'KG1', 'KG2', 'Class1', 'Class2', 'Class3', 'Class4', 'Class5', 'Class6', 'JHS 1', 'JHS 2', 'JHS 3'];
     if (currentUser && currentUser.role === 'teacher') {
         const teacher = teachers.find(t => t.id === currentUser.teacherId);
         availableClasses = teacher && teacher.classes ? teacher.classes : [];
     }
     
     const modalBody = document.getElementById('modalBody');
+    const today = new Date().toISOString().split('T')[0];
+    
     modalBody.innerHTML = `
         <h3>Record Attendance</h3>
-        <form id="attendanceForm" onsubmit="saveAttendance(event)">
+        <form id="attendanceForm" onsubmit="saveAttendanceList(event)">
             <div class="form-group">
-                <label for="attendanceClass">Class</label>
-                <select id="attendanceClass" required>
+                <label for="attendanceDateList">Date</label>
+                <input type="date" id="attendanceDateList" value="${today}" required>
+            </div>
+            <div class="form-group">
+                <label for="attendanceClassList">Class</label>
+                <select id="attendanceClassList" required onchange="populateStudentsList()">
                     <option value="">Select a class</option>
                     ${availableClasses.map(cls => `<option value="${cls}">${cls}</option>`).join('')}
                 </select>
             </div>
-            <div class="form-group">
-                <label for="attendanceStudentSelect">Student</label>
-                <select id="attendanceStudentSelect" required>
-                    <option value="">Select class first</option>
-                </select>
+            <div id="studentsList" style="display: none; margin-top: 1.5rem;">
+                <div id="studentsAttendanceContainer"></div>
+                <div style="margin-top: 1.5rem; display: flex; gap: 0.75rem;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Save Attendance</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()" style="flex: 1;">Cancel</button>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="attendanceDate2">Date</label>
-                <input type="date" id="attendanceDate2" required>
-            </div>
-            <div class="form-group">
-                <label for="attendanceStatus">Status</label>
-                <select id="attendanceStatus" required>
-                    <option value="Present">Present</option>
-                    <option value="Absent">Absent</option>
-                    <option value="Late">Late</option>
-                    <option value="Sick">Sick Leave</option>
-                </select>
-            </div>
-            <button type="submit" class="btn btn-primary">Save Attendance</button>
         </form>
     `;
     openModal();
-
-    // After modal renders, filter students by selected class
-    setTimeout(() => {
-        const classSelect = document.getElementById('attendanceClass');
-        const studentSelect = document.getElementById('attendanceStudentSelect');
-        if (!classSelect || !studentSelect) return;
-
-        // Populate students for the currently selected class
-        function populateForClass(cls) {
-            if (!cls) {
-                studentSelect.innerHTML = `<option value="">Select class first</option>`;
-                studentSelect.disabled = true;
-                return;
-            }
-            const classStudents = students.filter(s => s.class === cls);
-            const opts = classStudents.map(s => `<option value="${s.id}" data-class="${s.class}">${s.name}</option>`).join('');
-            studentSelect.innerHTML = `<option value="">Select Student</option>` + opts;
-            studentSelect.disabled = false;
-        }
-
-        classSelect.addEventListener('change', function() {
-            populateForClass(this.value);
-        });
-    }, 20);
 }
 
-function saveAttendance(event) {
-    event.preventDefault();
-    const studentId = document.getElementById('attendanceStudentSelect').value;
-    const studentObj = students.find(s => s.id === studentId);
-    const student = studentObj ? studentObj.name : studentId;
-    const attendanceClass = studentObj ? studentObj.class : document.getElementById('attendanceClass').value;
-    const date = document.getElementById('attendanceDate2').value;
-    const status = document.getElementById('attendanceStatus').value;
-    if (editingAttendanceIndex !== null) {
-        attendance[editingAttendanceIndex] = { student, class: attendanceClass, date, status };
-        editingAttendanceIndex = null;
-        showToast('Attendance updated', 'success');
-    } else {
-        attendance.push({ student, class: attendanceClass, date, status });
-        showToast('Attendance recorded successfully', 'success');
+function populateStudentsList() {
+    const selectedClass = document.getElementById('attendanceClassList').value;
+    const studentsList = document.getElementById('studentsList');
+    const container = document.getElementById('studentsAttendanceContainer');
+    
+    if (!selectedClass) {
+        studentsList.style.display = 'none';
+        return;
     }
+    
+    const classStudents = students.filter(s => s.class === selectedClass);
+    
+    if (classStudents.length === 0) {
+        container.innerHTML = '<p class="text-center">No students in this class</p>';
+        studentsList.style.display = 'block';
+        return;
+    }
+    
+    const html = `
+        <h4 style="margin-bottom: 1.25rem; color: var(--primary-color);">Mark Students as Present / Absent</h4>
+        <div class="attendance-list">
+            ${classStudents.map((student, idx) => `
+                <div class="attendance-row">
+                    <div class="student-info">
+                        <span class="student-name">${student.name}</span>
+                        <span class="student-id">${student.id}</span>
+                    </div>
+                    <div class="attendance-options">
+                        <label class="attendance-radio">
+                            <input type="radio" name="attendance_${idx}" value="Present" checked>
+                            <span class="status-label present">Present</span>
+                        </label>
+                        <label class="attendance-radio">
+                            <input type="radio" name="attendance_${idx}" value="Absent">
+                            <span class="status-label absent">Absent</span>
+                        </label>
+                        <label class="attendance-radio">
+                            <input type="radio" name="attendance_${idx}" value="Late">
+                            <span class="status-label late">Late</span>
+                        </label>
+                        <label class="attendance-radio">
+                            <input type="radio" name="attendance_${idx}" value="Sick">
+                            <span class="status-label sick">Sick</span>
+                        </label>
+                    </div>
+                    <div class="attendance-note">
+                        <textarea id="note_${idx}" placeholder="Add reason or note..." class="attendance-textarea"></textarea>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    
+    container.innerHTML = html;
+    studentsList.style.display = 'block';
+}
+
+function saveAttendanceList(event) {
+    event.preventDefault();
+    
+    const selectedClass = document.getElementById('attendanceClassList').value;
+    const date = document.getElementById('attendanceDateList').value;
+    const classStudents = students.filter(s => s.class === selectedClass);
+    
+    let savedCount = 0;
+    
+    classStudents.forEach((student, idx) => {
+        const status = document.querySelector(`input[name="attendance_${idx}"]:checked`)?.value || 'Present';
+        const note = document.getElementById(`note_${idx}`)?.value || '';
+        
+        // Check if record already exists for this date
+        const existing = attendance.findIndex(a => a.student === student.name && a.date === date);
+        
+        const record = {
+            student: student.name,
+            studentId: student.id,
+            class: selectedClass,
+            date: date,
+            status: status,
+            note: note
+        };
+        
+        if (existing !== -1) {
+            attendance[existing] = record;
+        } else {
+            attendance.push(record);
+        }
+        savedCount++;
+    });
+    
     saveState();
+    showToast(`Attendance saved for ${savedCount} students`, 'success');
     closeModal();
     loadAttendance();
 }
 
+
 function editAttendance(index) {
-    editingAttendanceIndex = index;
     const att = attendance[index];
     const modalBody = document.getElementById('modalBody');
-    // Build student select filtered to the attendance record's class to avoid mis-allocation
-    // Try to find the student id from the stored name (backwards compatible)
     const matchedStudent = students.find(s => s.name === att.student || s.id === att.student);
     const studentIdVal = matchedStudent ? matchedStudent.id : '';
     const cls = att.class || (matchedStudent ? matchedStudent.class : '');
 
     modalBody.innerHTML = `
         <h3>Edit Attendance</h3>
-        <form id="attendanceEditForm" onsubmit="saveAttendance(event)">
+        <form id="attendanceEditForm" onsubmit="updateSingleAttendance(event, ${index})">
             <div class="form-group">
-                <label for="attendanceClass">Class</label>
-                <input type="text" id="attendanceClass" value="${cls}" readonly>
+                <label for="editAttendanceClass">Class</label>
+                <input type="text" id="editAttendanceClass" value="${cls}" readonly>
             </div>
             <div class="form-group">
-                <label for="attendanceStudentSelect">Student</label>
-                <select id="attendanceStudentSelect" class="student-select" required>
-                    <option value="">Select Student</option>
-                    ${students.filter(s => s.class === cls).map(s => `<option value="${s.id}" ${s.id === studentIdVal ? 'selected' : ''} data-class="${s.class}">${s.name} (${s.class})</option>`).join('')}
+                <label for="editAttendanceStudent">Student</label>
+                <input type="text" id="editAttendanceStudent" value="${att.student}" readonly>
+            </div>
+            <div class="form-group">
+                <label for="editAttendanceDate">Date</label>
+                <input type="date" id="editAttendanceDate" value="${att.date}" readonly>
+            </div>
+            <div class="form-group">
+                <label for="editAttendanceStatus">Status</label>
+                <select id="editAttendanceStatus" required>
+                    <option value="Present" ${att.status === 'Present' ? 'selected' : ''}>Present</option>
+                    <option value="Absent" ${att.status === 'Absent' ? 'selected' : ''}>Absent</option>
+                    <option value="Late" ${att.status === 'Late' ? 'selected' : ''}>Late</option>
+                    <option value="Sick" ${att.status === 'Sick' ? 'selected' : ''}>Sick</option>
                 </select>
             </div>
             <div class="form-group">
-                <label for="attendanceDate2">Date</label>
-                <input type="date" id="attendanceDate2" value="${att.date}" required>
+                <label for="editAttendanceNote">Note / Reason</label>
+                <textarea id="editAttendanceNote" placeholder="Add or edit reason for absence/late..." style="min-height: 80px;">${att.note || ''}</textarea>
             </div>
-            <div class="form-group">
-                <label for="attendanceStatus">Status</label>
-                <select id="attendanceStatus" required>
-                    <option value="Present">Present</option>
-                    <option value="Absent">Absent</option>
-                    <option value="Late">Late</option>
-                    <option value="Sick">Sick Leave</option>
-                </select>
+            <div class="auth-buttons" style="margin-top: 1.5rem;">
+                <button type="submit" class="btn btn-primary">Update</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
             </div>
-            <button type="submit" class="btn btn-primary">Update Attendance</button>
         </form>
     `;
     openModal();
-    // set status value
-    setTimeout(() => {
-        document.getElementById('attendanceStatus').value = att.status;
-        // ensure the student select is present and set (already selected in the template), if not try to set
-        const sSel = document.getElementById('attendanceStudentSelect');
-        if (sSel && !sSel.value && studentIdVal) sSel.value = studentIdVal;
-    }, 20);
+}
+
+function updateSingleAttendance(event, index) {
+    event.preventDefault();
+    const status = document.getElementById('editAttendanceStatus').value;
+    const note = document.getElementById('editAttendanceNote').value;
+    
+    attendance[index].status = status;
+    attendance[index].note = note;
+    
+    saveState();
+    showToast('Attendance updated successfully', 'success');
+    closeModal();
+    loadAttendance();
 }
 
 function deleteAttendance(index) {
@@ -1415,7 +1478,7 @@ function filterGrades() {
     const classFilter = document.getElementById('classGradeFilter').value;
     const subjectFilter = document.getElementById('subjectFilter').value;
     
-    const filtered = grades.filter(grade => {
+    let filtered = grades.filter(grade => {
         // Get the student's class
         const student = students.find(s => s.name === grade.student);
         const studentClass = student ? student.class : '';
@@ -1424,6 +1487,16 @@ function filterGrades() {
         const subjectMatch = !subjectFilter || grade.subject === subjectFilter;
         return classMatch && subjectMatch;
     });
+    
+    // Apply role-based filtering for teachers
+    if (currentUser && currentUser.role === 'teacher') {
+        const teacher = teachers.find(t => t.id === currentUser.teacherId);
+        const myClasses = teacher && teacher.classes ? teacher.classes : [];
+        filtered = filtered.filter(g => {
+            const student = students.find(s => s.name === g.student);
+            return student && myClasses.includes(student.class);
+        });
+    }
     
     displayGrades(filtered);
 }
@@ -3213,7 +3286,7 @@ function showTeacherForm() {
     const editingId = window.editingTeacherId || null;
     
     const subjects = ['Mathematics', 'English', 'Science', 'Social Studies', 'Physical Education', 'Computer Science', 'Art', 'Music', 'History', 'Geography'];
-    const classes = ['Nuserary', 'KG1', 'KG2', 'Class1', 'Class2', 'Class3', 'Class4', 'Class5', 'Class6', 'JHS1', 'JHS2', 'JHS3'];
+    const classes = ['Nursery', 'KG1', 'KG2', 'Class1', 'Class2', 'Class3', 'Class4', 'Class5', 'Class6', 'JHS 1', 'JHS 2', 'JHS 3'];
     
     let subjectsHTML = subjects.map(subject => `
         <label style="display: inline-flex; align-items: center; margin-right: 1rem; margin-bottom: 0.5rem; cursor: pointer;">

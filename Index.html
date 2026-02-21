@@ -86,7 +86,7 @@
                 
                 <div class="form-group">
                     <label for="userRole">User Role</label>
-                    <select id="userRole" name="userRole" required onchange="toggleIdField()" style="cursor: pointer;">
+                    <select id="userRole" name="userRole" required onchange="toggleIdField()">
                         <option value="">Select your role</option>
                         <option value="admin">Administrator</option>
                         <option value="teacher">Teacher</option>
@@ -136,8 +136,8 @@
                     <div class="navbar-profile">
                         <div class="profile-avatar" id="profileAvatar">
                             <span id="avatarInitials">U</span>
-                            <input type="file" id="profilePicInput" class="hidden" accept="image/*" onchange="uploadProfilePic(event)">
-                            <button class="edit-pic-btn" onclick="document.getElementById('profilePicInput').click()" title="Upload profile picture">
+                            <input type="file" id="profilePicInput" class="hidden" accept="image/*" onchange="uploadProfilePic(event)" title="Upload profile picture">
+                            <button class="edit-pic-btn" onclick="document.getElementById('profilePicInput').click()" title="Upload profile picture" aria-label="Upload profile picture">
                                 <i class="fas fa-camera"></i>
                             </button>
                         </div>
@@ -168,7 +168,7 @@
                 </a></li>
 
                 <!-- Admin Only -->
-                <li class="menu-separator" data-roles="admin" style="display: none;">Administration</li>
+                <li class="menu-separator" data-roles="admin">Administration</li>
                 <li><a href="#" onclick="showSection('students')" class="menu-item" data-roles="admin">
                     <i class="fas fa-users"></i> Students
                 </a></li>
@@ -186,7 +186,7 @@
                 </a></li>
 
                 <!-- Teacher Only -->
-                <li class="menu-separator" data-roles="teacher" style="display: none;">Teaching</li>
+                <li class="menu-separator" data-roles="teacher">Teaching</li>
                 <li><a href="#" onclick="showSection('attendance')" class="menu-item" data-roles="teacher">
                     <i class="fas fa-clipboard-list"></i> Attendance Register
                 </a></li>
@@ -199,7 +199,7 @@
                 <li><a href="#" onclick="showSection('students')" class="menu-item" data-roles="teacher">
                     <i class="fas fa-users"></i> My Students
                 </a></li>
-                <li class="menu-separator" data-roles="teacher" style="display: none;">Other</li>
+                <li class="menu-separator" data-roles="teacher">Other</li>
                 <li><a href="#" onclick="showSection('notices')" class="menu-item" data-roles="teacher">
                     <i class="fas fa-bell"></i> Notices
                 </a></li>
@@ -208,7 +208,7 @@
                 </a></li>
 
                 <!-- Student Only -->
-                <li class="menu-separator" data-roles="student" style="display: none;">Academics</li>
+                <li class="menu-separator" data-roles="student">Academics</li>
                 <li><a href="#" onclick="showSection('myProfile')" class="menu-item" data-roles="student">
                     <i class="fas fa-user"></i> My Profile
                 </a></li>
@@ -221,7 +221,7 @@
                 <li><a href="#" onclick="showSection('assignments')" class="menu-item" data-roles="student">
                     <i class="fas fa-download"></i> Downloads
                 </a></li>
-                <li class="menu-separator" data-roles="student" style="display: none;">Other</li>
+                <li class="menu-separator" data-roles="student">Other</li>
                 <li><a href="#" onclick="showSection('notices')" class="menu-item" data-roles="student">
                     <i class="fas fa-bell"></i> Notices
                 </a></li>
@@ -230,7 +230,7 @@
                 </a></li>
 
                 <!-- Parent Only -->
-                <li class="menu-separator" data-roles="parent" style="display: none;">Child Information</li>
+                <li class="menu-separator" data-roles="parent">Child Information</li>
                 <li><a href="#" onclick="showChildProgress()" class="menu-item" data-roles="parent">
                     <i class="fas fa-chart-bar"></i> Child's Progress
                 </a></li>
@@ -240,7 +240,7 @@
                 <li><a href="#" onclick="showFeePortal(); closeSidebar()" class="menu-item" data-roles="parent">
                     <i class="fas fa-credit-card"></i> Fee Portal
                 </a></li>
-                <li class="menu-separator" data-roles="parent" style="display: none;">School</li>
+                <li class="menu-separator" data-roles="parent">School</li>
                 <li><a href="#" onclick="showSection('notices')" class="menu-item" data-roles="parent">
                     <i class="fas fa-bell"></i> School Notices
                 </a></li>
@@ -407,12 +407,13 @@
                             <th>Class</th>
                             <th>Date</th>
                             <th>Status</th>
+                            <th>Note</th>
                             <th>Action</th>
                         </tr>
                     </thead>
                     <tbody id="attendanceTableBody">
                         <tr>
-                            <td colspan="5" class="text-center">No attendance records found</td>
+                            <td colspan="6" class="text-center">No attendance records found</td>
                         </tr>
                     </tbody>
                 </table>
@@ -438,9 +439,9 @@
                         <option value="Class4">Class 4</option>
                         <option value="Class5">Class 5</option>
                         <option value="Class6">Class 6</option>
-                        <option value="JHS1">JHS 1</option>
-                        <option value="JHS2">JHS 2</option>
-                        <option value="JHS3">JHS 3</option>
+                        <option value="JHS 1">JHS 1</option>
+                        <option value="JHS 2">JHS 2</option>
+                        <option value="JHS 3">JHS 3</option>
                     </select>
                     <select id="subjectFilter" onchange="filterGrades()" title="Filter by subject">
                         <option value="">All Subjects</option>
@@ -668,7 +669,7 @@
             <!-- Parent Dashboard -->
             <section id="parentDashboard" class="content-section">
                 <h2>Parent / Guardian Dashboard</h2>
-                <p class="text-center" style="color: #7f8c8d; margin-bottom: 1.5rem;">View your child's fees, payments, and balance below.</p>
+                <p class="text-center parent-dashboard-subtitle">View your child's fees, payments, and balance below.</p>
                 <div id="parentContent">
                     <p class="text-center">Loading fee information...</p>
                 </div>
