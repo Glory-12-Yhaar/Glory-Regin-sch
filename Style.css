@@ -356,10 +356,99 @@ input, select, textarea {
 .navbar-menu {
     flex: 1;
     margin: 0 2rem;
+    display: none;
+}
+
+.navbar-profile {
+    flex: 1;
+    margin: 0 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+}
+
+.profile-avatar {
+    position: relative;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-avatar #avatarInitials {
+    font-size: 1.2rem;
+    text-transform: uppercase;
+}
+
+.edit-pic-btn {
+    position: absolute;
+    bottom: -5px;
+    right: -5px;
+    width: 28px;
+    height: 28px;
+    background: #2980b9;
+    border: 2px solid white;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    transition: var(--transition);
+    padding: 0;
+}
+
+.edit-pic-btn:hover {
+    background: #2471a3;
+    transform: scale(1.1);
+}
+
+.profile-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+    color: white;
+}
+
+.profile-info .user-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+}
+
+.profile-info .user-email {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 400;
+}
+
+.profile-info .user-role {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 400;
+    text-transform: capitalize;
 }
 
 .navbar-nav {
-    display: flex;
+    display: none;
     list-style: none;
     gap: 2rem;
 }
@@ -447,6 +536,18 @@ input, select, textarea {
 
 .menu-item i {
     font-size: 1.2rem;
+}
+
+.menu-separator {
+    list-style: none;
+    padding: 1rem 1.5rem 0.5rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 600;
+    margin-top: 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .main-content {
@@ -551,7 +652,6 @@ input, select, textarea {
 .table-responsive {
     width: 100%;
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
 }
 
 .data-table {
@@ -754,6 +854,12 @@ input, select, textarea {
     box-shadow: var(--shadow);
 }
 
+.settings-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
 .settings-section h3 {
     color: var(--primary-color);
     margin-bottom: 1.5rem;
@@ -936,6 +1042,38 @@ input, select, textarea {
         display: none;
     }
 
+    .navbar-profile {
+        flex: 1;
+        margin: 0 0.5rem;
+        gap: 0.5rem;
+    }
+
+    .profile-avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 0.9rem;
+    }
+
+    .profile-info {
+        gap: 0.1rem;
+    }
+
+    .profile-info .user-name {
+        font-size: 0.9rem;
+    }
+
+    .profile-info .user-email {
+        font-size: 0.7rem;
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .profile-info .user-role {
+        font-size: 0.65rem;
+    }
+
     .mobile-nav-toggle {
         display: inline-flex;
         align-items: center;
@@ -1000,19 +1138,36 @@ input, select, textarea {
 
     .section-header {
         flex-direction: column;
+        gap: 0.5rem;
     }
 
     .section-header button {
         width: 100%;
+        font-size: 0.85rem;
+        padding: 0.6rem 0.8rem;
     }
 
     .filters {
         flex-direction: column;
+        gap: 0.75rem;
     }
 
     .filters input,
     .filters select {
         width: 100%;
+    }
+
+    /* Fee table mobile layout */
+    .data-table td[data-label="Action"] {
+        flex-wrap: wrap;
+        gap: 0.3rem;
+    }
+
+    .data-table td[data-label="Action"] .btn {
+        flex: 1 1 48%;
+        min-width: auto;
+        font-size: 0.7rem;
+        padding: 0.4rem 0.5rem;
     }
 }
 
@@ -1043,6 +1198,27 @@ input, select, textarea {
     .toast {
         min-width: auto;
         width: 100%;
+    }
+
+    /* Fee management mobile optimizations */
+    .data-table td[data-label="Action"] {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .data-table td[data-label="Action"] .btn {
+        width: 100%;
+        font-size: 0.75rem;
+        padding: 0.35rem 0.5rem;
+    }
+
+    .section-header {
+        gap: 0.5rem;
+    }
+
+    .section-header button {
+        font-size: 0.8rem;
+        padding: 0.5rem;
     }
 }
 

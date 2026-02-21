@@ -43,7 +43,7 @@
                     </select>
                 </div>
 
-                <div class="form-group" id="idField" style="display: none;">
+                <div class="form-group hidden" id="idField">
                     <label for="idInput" id="idLabel">ID</label>
                     <input type="text" id="idInput" name="idInput" placeholder="Enter your ID">
                 </div>
@@ -75,21 +75,22 @@
                     </button>
                 </div>
                 
-                <div class="navbar-menu">
-                    <ul class="navbar-nav">
-                        <li><a href="#" onclick="showSection('dashboard')" data-roles="admin,teacher,student,parent">Dashboard</a></li>
-                        <li><a href="#" onclick="showSection('students')" data-roles="admin,teacher">Students</a></li>
-                        <li><a href="#" onclick="showSection('teachers')" data-roles="admin">Teachers</a></li>
-                        <li><a href="#" onclick="showSection('attendance')" data-roles="admin,teacher">Attendance</a></li>
-                        <li><a href="#" onclick="showSection('grades')" data-roles="admin,teacher,student ">Grades</a></li>
-                        <li><a href="#" onclick="showSection('fees')" data-roles="admin,parent">Fees</a></li>
-                        <li><a href="#" onclick="showSection('notices')" data-roles="admin,teacher,student,parent">Notices</a></li>
-                        <li><a href="#" onclick="showSection('reports')" data-roles="admin,teacher">Reports</a></li>
-                    </ul>
+                <div class="navbar-profile">
+                    <div class="profile-avatar" id="profileAvatar">
+                        <span id="avatarInitials">U</span>
+                        <input type="file" id="profilePicInput" class="hidden" accept="image/*" onchange="uploadProfilePic(event)">
+                        <button class="edit-pic-btn" onclick="document.getElementById('profilePicInput').click()" title="Upload profile picture">
+                            <i class="fas fa-camera"></i>
+                        </button>
+                    </div>
+                    <div id="profileInfo" class="profile-info">
+                        <span id="userGreeting" class="user-name">Welcome</span>
+                        <span id="userEmail" class="user-email"></span>
+                        <span id="userRole" class="user-role"></span>
+                    </div>
                 </div>
                 
                 <div class="navbar-user">
-                    <span id="userGreeting">Welcome, User</span>
                     <button class="btn btn-logout" onclick="logout()">Logout</button>
                 </div>
             </div>
@@ -102,31 +103,92 @@
             </div>
             
             <ul class="sidebar-menu">
+                <!-- Universal Items -->
                 <li><a href="#" onclick="showSection('dashboard')" class="menu-item active" data-roles="admin,teacher,student,parent">
                     <i class="fas fa-home"></i> Dashboard
                 </a></li>
-                <li><a href="#" onclick="showSection('students')" class="menu-item" data-roles="admin,teacher">
-                    <i class="fas fa-users"></i> Student Management
+
+                <!-- Admin Only -->
+                <li class="menu-separator" data-roles="admin" style="display: none;">Administration</li>
+                <li><a href="#" onclick="showSection('students')" class="menu-item" data-roles="admin">
+                    <i class="fas fa-users"></i> Students
                 </a></li>
                 <li><a href="#" onclick="showSection('teachers')" class="menu-item" data-roles="admin">
                     <i class="fas fa-chalkboard-user"></i> Teachers
                 </a></li>
-                <li><a href="#" onclick="showSection('attendance')" class="menu-item" data-roles="admin,teacher">
-                    <i class="fas fa-clipboard-list"></i> Attendance
+                <li><a href="#" onclick="showSection('fees')" class="menu-item" data-roles="admin">
+                    <i class="fas fa-credit-card"></i> Fees
                 </a></li>
-                <li><a href="#" onclick="showSection('grades')" class="menu-item" data-roles="admin,teacher,student">
-                    <i class="fas fa-book"></i> Gradebook
-                </a></li>
-                <li><a href="#" onclick="showSection('fees')" class="menu-item" data-roles="admin,parent">
-                    <i class="fas fa-credit-card"></i> Fee Management
-                </a></li>
-                <li><a href="#" onclick="showSection('notices')" class="menu-item" data-roles="admin,teacher,student,parent">
-                    <i class="fas fa-bell"></i> Notices & Notifications
-                </a></li>
-                <li><a href="#" onclick="showSection('reports')" class="menu-item" data-roles="admin,teacher">
+                <li><a href="#" onclick="showSection('reports')" class="menu-item" data-roles="admin">
                     <i class="fas fa-chart-bar"></i> Reports
                 </a></li>
-                <li><a href="#" onclick="showSection('settings')" class="menu-item" data-roles="admin,teacher,student,parent">
+                <li><a href="#" onclick="showSection('settings')" class="menu-item" data-roles="admin">
+                    <i class="fas fa-cog"></i> Settings
+                </a></li>
+
+                <!-- Teacher Only -->
+                <li class="menu-separator" data-roles="teacher" style="display: none;">Teaching</li>
+                <li><a href="#" onclick="showSection('attendance')" class="menu-item" data-roles="teacher">
+                    <i class="fas fa-clipboard-list"></i> Attendance Register
+                </a></li>
+                <li><a href="#" onclick="showSection('grades')" class="menu-item" data-roles="teacher">
+                    <i class="fas fa-book"></i> Mark Grades
+                </a></li>
+                <li><a href="#" onclick="showSection('assignments')" class="menu-item" data-roles="teacher">
+                    <i class="fas fa-upload"></i> Assignments
+                </a></li>
+                <li><a href="#" onclick="showSection('students')" class="menu-item" data-roles="teacher">
+                    <i class="fas fa-users"></i> My Students
+                </a></li>
+                <li class="menu-separator" data-roles="teacher" style="display: none;">Other</li>
+                <li><a href="#" onclick="showSection('notices')" class="menu-item" data-roles="teacher">
+                    <i class="fas fa-bell"></i> Notices
+                </a></li>
+                <li><a href="#" onclick="showSection('settings')" class="menu-item" data-roles="teacher">
+                    <i class="fas fa-cog"></i> Settings
+                </a></li>
+
+                <!-- Student Only -->
+                <li class="menu-separator" data-roles="student" style="display: none;">Academics</li>
+                <li><a href="#" onclick="showSection('myProfile')" class="menu-item" data-roles="student">
+                    <i class="fas fa-user"></i> My Profile
+                </a></li>
+                <li><a href="#" onclick="showSection('resultChecker')" class="menu-item" data-roles="student">
+                    <i class="fas fa-certificate"></i> Results
+                </a></li>
+                <li><a href="#" onclick="showSection('grades')" class="menu-item" data-roles="student">
+                    <i class="fas fa-chart-line"></i> Attendance
+                </a></li>
+                <li><a href="#" onclick="showSection('assignments')" class="menu-item" data-roles="student">
+                    <i class="fas fa-download"></i> Downloads
+                </a></li>
+                <li class="menu-separator" data-roles="student" style="display: none;">Other</li>
+                <li><a href="#" onclick="showSection('notices')" class="menu-item" data-roles="student">
+                    <i class="fas fa-bell"></i> Notices
+                </a></li>
+                <li><a href="#" onclick="showSection('settings')" class="menu-item" data-roles="student">
+                    <i class="fas fa-cog"></i> Settings
+                </a></li>
+
+                <!-- Parent Only -->
+                <li class="menu-separator" data-roles="parent" style="display: none;">Child Information</li>
+                <li><a href="#" onclick="showChildProgress()" class="menu-item" data-roles="parent">
+                    <i class="fas fa-chart-bar"></i> Child's Progress
+                </a></li>
+                <li><a href="#" onclick="showChildAttendanceAlerts()" class="menu-item" data-roles="parent">
+                    <i class="fas fa-clipboard-check"></i> Attendance Alerts
+                </a></li>
+                <li><a href="#" onclick="showFeePortal(); closeSidebar()" class="menu-item" data-roles="parent">
+                    <i class="fas fa-credit-card"></i> Fee Portal
+                </a></li>
+                <li class="menu-separator" data-roles="parent" style="display: none;">School</li>
+                <li><a href="#" onclick="showSection('notices')" class="menu-item" data-roles="parent">
+                    <i class="fas fa-bell"></i> School Notices
+                </a></li>
+                <li><a href="#" onclick="showMessageTeacherForm(); closeSidebar()" class="menu-item" data-roles="parent">
+                    <i class="fas fa-envelope"></i> Message Teacher
+                </a></li>
+                <li><a href="#" onclick="showSection('settings')" class="menu-item" data-roles="parent">
                     <i class="fas fa-cog"></i> Settings
                 </a></li>
             </ul>
@@ -184,9 +246,9 @@
 
             <!-- Students Section -->
             <section id="students" class="content-section">
-                <h2>Student Management</h2>
+                <h2 id="studentsSectionTitle">Student Management</h2>
                 <div class="section-header">
-                        <button class="btn btn-primary" onclick="showStudentForm()" data-roles="admin,teacher">Add New Student</button>
+                        <button class="btn btn-primary" onclick="showStudentForm()" data-roles="admin">Add New Student</button>
                 </div>
                 
                 <div class="search-bar">
@@ -254,8 +316,8 @@
                 </div>
                 
                 <div class="filters">
-                    <input type="date" id="attendanceDate" onchange="filterAttendance()">
-                    <select id="classFilter" onchange="filterAttendance()">
+                    <input type="date" id="attendanceDate" onchange="filterAttendance()" title="Select attendance date" aria-label="Select attendance date" placeholder="YYYY-MM-DD">
+                    <select id="classFilter" onchange="filterAttendance()" title="Filter by class">
                         <option value="">All Classes</option>
                         <option value="Nursery">Nursery</option>
                         <option value="KG1">KG 1</option>
@@ -270,7 +332,7 @@
                         <option value="JHS2">JHS 2</option>
                         <option value="JHS3">JHS 3</option>
                     </select>
-                    <select id="attendanceStatusFilter" onchange="filterAttendance()">
+                    <select id="attendanceStatusFilter" onchange="filterAttendance()" title="Filter by attendance status">
                         <option value="">All Status</option>
                         <option value="Present">Present</option>
                         <option value="Absent">Absent</option>
@@ -278,6 +340,7 @@
                     </select>
                 </div>
                 
+                <div class="table-responsive">
                 <table class="data-table">
                     <thead>
                         <tr>
@@ -294,6 +357,7 @@
                         </tr>
                     </tbody>
                 </table>
+                </div>
             </section>
 
             <!-- Grades Section -->
@@ -304,7 +368,7 @@
                 </div>
                 
                 <div class="filters">
-                    <select id="classGradeFilter" onchange="filterGrades()">
+                    <select id="classGradeFilter" onchange="filterGrades()" title="Filter by class">
                         <option value="">All Classes</option>
                         <option value="Nursery">Nursery</option>
                         <option value="KG1">KG 1</option>
@@ -319,7 +383,7 @@
                         <option value="JHS2">JHS 2</option>
                         <option value="JHS3">JHS 3</option>
                     </select>
-                    <select id="subjectFilter" onchange="filterGrades()">
+                    <select id="subjectFilter" onchange="filterGrades()" title="Filter by subject">
                         <option value="">All Subjects</option>
                         <option value="Mathematics">Mathematics</option>
                         <option value="English">English</option>
@@ -363,7 +427,7 @@
                 </div>
                 
                 <div class="filters">
-                    <select id="classFeeFilter" onchange="filterFees()">
+                    <select id="classFeeFilter" onchange="filterFees()" title="Filter by class">
                         <option value="">All Classes</option>
                         <option value="Nursery">Nuserary</option>
                         <option value="KG1">KG 1</option>
@@ -378,7 +442,7 @@
                         <option value="JHS2">JHS 2</option>
                         <option value="JHS3">JHS 3</option>
                     </select>
-                    <select id="feeStatusFilter" onchange="filterFees()">
+                    <select id="feeStatusFilter" onchange="filterFees()" title="Filter by fee status">
                         <option value="">All Status</option>
                         <option value="Paid">Paid</option>
                         <option value="Pending">Pending</option>
@@ -386,24 +450,26 @@
                     </select>
                 </div>
                 
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Student Name</th>
-                            <th>Amount Due</th>
-                            <th>Amount Paid</th>
-                            <th>Balance</th>
-                            <th>Status</th>
-                            <th>Due Date</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="feesTableBody">
-                        <tr>
-                            <td colspan="7" class="text-center">No fee records found</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Student Name</th>
+                                <th>Amount Due</th>
+                                <th>Amount Paid</th>
+                                <th>Balance</th>
+                                <th>Status</th>
+                                <th>Due Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="feesTableBody">
+                            <tr>
+                                <td colspan="7" class="text-center">No fee records found</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
             <!-- Notices Section -->
@@ -449,6 +515,18 @@
                 </div>
             </section>
 
+            <!-- Assignments Section -->
+            <section id="assignments" class="content-section">
+                <h2>Assignments & Resources</h2>
+                <div class="section-header">
+                    <button class="btn btn-primary" onclick="showAssignmentUpload()" data-roles="teacher">Upload Assignment</button>
+                    <button class="btn btn-secondary" onclick="showUploadHistory()" data-roles="teacher,admin">My Uploads</button>
+                </div>
+                <div id="assignmentsContainer" class="notices-container">
+                    <p class="text-center">No assignments yet</p>
+                </div>
+            </section>
+
             <!-- Settings Section -->
             <section id="settings" class="content-section">
                 <h2>Settings</h2>
@@ -486,6 +564,54 @@
                             <button type="submit" class="btn btn-primary">Change Password</button>
                         </form>
                     </div>
+                    
+                    <div class="settings-section" data-roles="admin">
+                        <h3>System Settings</h3>
+                        <div class="settings-actions">
+                            <button class="btn btn-primary" onclick="showSystemSettings()">Edit System Settings</button>
+                            <button class="btn btn-secondary" onclick="showUserManagement()">User Management</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Student Profile (My Profile) -->
+            <section id="myProfile" class="content-section">
+                <h2>My Profile</h2>
+                <div id="myProfileContainer" class="settings-container">
+                    <div class="settings-section">
+                        <h3>Profile</h3>
+                        <div id="myProfileDetails">
+                            <p class="text-center">No profile loaded</p>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <h3>Attendance Summary</h3>
+                        <div id="myAttendanceSummary">
+                            <p class="text-center">No attendance data</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Result Checker -->
+            <section id="resultChecker" class="content-section">
+                <h2>Result Checker</h2>
+                <div class="section-header">
+                    <button class="btn btn-primary" onclick="showMyResults()">View My Results</button>
+                    <button class="btn btn-secondary" onclick="downloadMyReport()">Download Report Card</button>
+                </div>
+                <div id="resultContainer">
+                    <p class="text-center">No results to display</p>
+                </div>
+            </section>
+
+            <!-- Parent Dashboard -->
+            <section id="parentDashboard" class="content-section">
+                <h2>Parent / Guardian Dashboard</h2>
+                <p class="text-center" style="color: #7f8c8d; margin-bottom: 1.5rem;">View your child's fees, payments, and balance below.</p>
+                <div id="parentContent">
+                    <p class="text-center">Loading fee information...</p>
                 </div>
             </section>
         </div>

@@ -14,6 +14,9 @@ let attendance = [];
 let grades = [];
 let fees = [];
 let notices = [];
+let assignments = [];
+let settings = { schoolName: 'Glory Regin Preparatory School', logoUrl: '', academicYear: '2025/2026', termStart: '', termEnd: '' };
+let messages = [];
 let users = [];
 let feeStructures = [];
 let paymentHistory = [];
@@ -31,7 +34,11 @@ const STORAGE_KEY = 'glory_regin_sms_v1';
 // Authentication Functions
 // ========================================
 
-document.getElementById('loginForm').addEventListener('submit', function(e) {
+// Attach login form listener after DOM loads
+function attachLoginFormListener() {
+    const loginForm = document.getElementById('loginForm');
+    if (!loginForm) return;
+    loginForm.addEventListener('submit', function(e) {
     e.preventDefault();
     
     const email = document.getElementById('email').value;
@@ -149,7 +156,8 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
     } else {
         showToast('Invalid email or password', 'error');
     }
-});
+    });
+}
 
 // Toggle ID field visibility and label based on role selection
 function toggleIdField() {
@@ -159,39 +167,47 @@ function toggleIdField() {
     const idInput = document.getElementById('idInput');
     
     if (userRole === 'parent') {
-        idField.style.display = 'block';
+        idField.classList.remove('hidden');
         idLabel.textContent = 'Student ID';
         idInput.placeholder = "Enter your ward's student ID (e.g., STU001)";
         idInput.required = true;
     } else if (userRole === 'teacher') {
-        idField.style.display = 'block';
+        idField.classList.remove('hidden');
         idLabel.textContent = 'Teacher ID';
         idInput.placeholder = 'Enter your teacher ID (e.g., TCH001)';
         idInput.required = true;
     } else if (userRole === 'student') {
-        idField.style.display = 'block';
+        idField.classList.remove('hidden');
         idLabel.textContent = 'Student ID';
         idInput.placeholder = 'Enter your student ID (e.g., STU001)';
         idInput.required = true;
     } else {
-        idField.style.display = 'none';
+        idField.classList.add('hidden');
         idInput.required = false;
         idInput.value = '';
     }
 }
 
-function togglePasswordVisibility() {
-    const passwordInput = document.getElementById('password');
-    const toggleButton = document.querySelector('.password-toggle i');
+// Generic password toggle function that works for any password field
+function togglePasswordVisibility(inputId) {
+    const passwordInput = document.getElementById(inputId);
+    if (!passwordInput) return;
+    // Find the toggle button in the same wrapper
+    const wrapper = passwordInput.closest('.password-field-wrapper') || passwordInput.parentElement;
+    const toggleButton = wrapper ? wrapper.querySelector('.password-toggle i') : null;
     
     if (passwordInput.type === 'password') {
         passwordInput.type = 'text';
-        toggleButton.classList.remove('fa-eye');
-        toggleButton.classList.add('fa-eye-slash');
+        if (toggleButton) {
+            toggleButton.classList.remove('fa-eye');
+            toggleButton.classList.add('fa-eye-slash');
+        }
     } else {
         passwordInput.type = 'password';
-        toggleButton.classList.remove('fa-eye-slash');
-        toggleButton.classList.add('fa-eye');
+        if (toggleButton) {
+            toggleButton.classList.remove('fa-eye-slash');
+            toggleButton.classList.add('fa-eye');
+        }
     }
 }
 
@@ -231,7 +247,12 @@ function showSignup() {
             </div>
             <div class="form-group">
                 <label for="signupPassword">Password</label>
-                <input type="password" id="signupPassword" required>
+                <div class="password-field-wrapper">
+                    <input type="password" id="signupPassword" required style="padding-right: 40px; width: 100%;">
+                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility('signupPassword')" aria-label="Toggle password visibility">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
             </div>
             <div class="form-group">
                 <label for="signupRole">Role</label>
@@ -268,8 +289,8 @@ function saveSignup(e) {
     const user = { id: 'USR' + String(users.length + 1).padStart(3, '0'), name, email, password, role };
     users.push(user);
     saveState();
-    closeModal();
     showToast('Account created successfully. Please login.', 'success');
+    closeModal();
 }
 
 // ========================================
@@ -282,14 +303,140 @@ function showDashboard() {
     updateUserGreeting();
     loadDashboardData();
     applyRoleUI(currentUser && currentUser.role);
+    filterSidebarByRole();
     showSection('dashboard');
 }
 
 function updateUserGreeting() {
     const greeting = document.getElementById('userGreeting');
+    const emailEl = document.getElementById('userEmail');
+    const roleEl = document.getElementById('userRole');
+    const initialsEl = document.getElementById('avatarInitials');
+    const profileAvatar = document.getElementById('profileAvatar');
+    
     if (currentUser) {
-        greeting.textContent = `Welcome, ${currentUser.name.charAt(0).toUpperCase() + currentUser.name.slice(1)}`;
+        // Display user name (capitalize first letter)
+        const displayName = currentUser.name.charAt(0).toUpperCase() + currentUser.name.slice(1);
+        greeting.textContent = displayName;
+        
+        // Display email
+        if (emailEl) emailEl.textContent = currentUser.email || '';
+        
+        // Display initials (first letters of each word)
+        const initials = currentUser.name
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase())
+            .join('')
+            .substring(0, 2);
+        if (initialsEl) initialsEl.textContent = initials;
+        
+        // Format and display role
+        const roleMap = {
+            'admin': 'Administrator',
+            'teacher': 'Teacher',
+            'student': 'Student',
+            'parent': 'Parent'
+        };
+        const roleDisplay = roleMap[currentUser.role] || currentUser.role;
+        if (roleEl) roleEl.textContent = roleDisplay;
+        
+        // Load profile picture if stored
+        if (currentUser.profilePic && profileAvatar) {
+            // Clear any existing content and show image
+            const existingImg = profileAvatar.querySelector('img');
+            if (existingImg) existingImg.remove();
+            initialsEl.style.display = 'none';
+            const img = document.createElement('img');
+            img.src = currentUser.profilePic;
+            profileAvatar.insertBefore(img, initialsEl);
+        }
     }
+}
+
+function uploadProfilePic(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Check file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+        return showToast('File size must be less than 2MB', 'error');
+    }
+    
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+        return showToast('Please upload an image file', 'error');
+    }
+    
+    // Convert image to base64
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const profilePicData = e.target.result;
+        
+        // Update current user
+        if (currentUser) {
+            currentUser.profilePic = profilePicData;
+            
+            // Update in storage
+            if (currentUser.role === 'admin') {
+                const user = users.find(u => u.email === currentUser.email);
+                if (user) user.profilePic = profilePicData;
+            } else if (currentUser.role === 'teacher') {
+                const teacher = teachers.find(t => t.id === currentUser.id);
+                if (teacher) teacher.profilePic = profilePicData;
+            } else if (currentUser.role === 'student') {
+                const student = students.find(s => s.id === currentUser.id);
+                if (student) student.profilePic = profilePicData;
+            } else if (currentUser.role === 'parent') {
+                const parent = users.find(u => u.id === currentUser.id);
+                if (parent) parent.profilePic = profilePicData;
+            }
+            
+            // Save to localStorage
+            saveState();
+            
+            // Update avatar display
+            updateUserGreeting();
+            showToast('Profile picture updated successfully', 'success');
+        }
+    };
+    reader.readAsDataURL(file);
+}
+
+function filterSidebarByRole() {
+    if (!currentUser) return;
+    
+    // Show/hide menu items based on role
+    document.querySelectorAll('[data-roles]').forEach(element => {
+        const allowedRoles = (element.getAttribute('data-roles') || '').split(',').map(r => r.trim());
+        if (allowedRoles.includes(currentUser.role)) {
+            element.style.display = '';
+        } else {
+            element.style.display = 'none';
+        }
+    });
+    
+    // Update menu separators visibility
+    document.querySelectorAll('.menu-separator').forEach(separator => {
+        const separatorRoles = (separator.getAttribute('data-roles') || '').split(',').map(r => r.trim());
+        // Check if any menu items after this separator are visible
+        let nextVisibleFound = false;
+        let nextElement = separator.nextElementSibling;
+        while (nextElement && !nextElement.classList.contains('menu-separator')) {
+            if (nextElement.style.display !== 'none') {
+                nextVisibleFound = true;
+                break;
+            }
+            nextElement = nextElement.nextElementSibling;
+        }
+        separator.style.display = nextVisibleFound ? '' : 'none';
+    });
+}
+
+function closeSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    if (sidebar) sidebar.classList.remove('open');
+    if (sidebarOverlay) sidebarOverlay.classList.add('hidden');
 }
 
 function showSection(sectionId) {
@@ -342,6 +489,8 @@ function showSection(sectionId) {
         loadFees();
     } else if (sectionId === 'notices') {
         loadNotices();
+    } else if (sectionId === 'assignments') {
+        displayAssignments();
     }
     // Close mobile sidebar if open (keeps desktop sidebar intact)
     closeMobileSidebar();
@@ -352,14 +501,190 @@ function showSection(sectionId) {
 // ========================================
 
 function loadDashboardData() {
-    // Load sample data
-    document.getElementById('totalStudents').textContent = students.length || '0';
-    document.getElementById('totalTeachers').textContent = teachers.length || '0';
-    const totalFees = fees.reduce((s, f) => s + (f.amountPaid || 0), 0);
-    document.getElementById('feesCollected').textContent = `₵${totalFees.toLocaleString()}`;
-    const presentCount = attendance.filter(a => a.status === 'Present').length;
-    const attendanceRate = attendance.length ? Math.round((presentCount / attendance.length) * 100) : 0;
-    document.getElementById('attendanceRate').textContent = `${attendanceRate}%`;
+    if (!currentUser) return;
+    
+    const dashboardSection = document.getElementById('dashboard');
+    let dashboardHTML = '<h2>Dashboard</h2>';
+    
+    if (currentUser.role === 'admin') {
+        // Admin Dashboard
+        dashboardHTML += `
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>Total Students</h3>
+                        <p class="card-number" id="totalStudents">${students.length || 0}</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-chalkboard-user"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>Total Teachers</h3>
+                        <p class="card-number" id="totalTeachers">${teachers.length || 0}</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-money-bill"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>Fees Collected</h3>
+                        <p class="card-number" id="feesCollected">₵${fees.reduce((s, f) => s + (f.amountPaid || 0), 0).toLocaleString()}</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>Attendance Rate</h3>
+                        <p class="card-number" id="attendanceRate">${attendance.length ? Math.round((attendance.filter(a => a.status === 'Present').length / attendance.length) * 100) : 0}%</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else if (currentUser.role === 'teacher') {
+        // Teacher Dashboard
+        const myClasses = students.filter(s => {
+            const teacher = teachers.find(t => t.id === currentUser.teacherId);
+            return teacher && teacher.classes && teacher.classes.includes(s.class);
+        });
+        dashboardHTML += `
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>My Students</h3>
+                        <p class="card-number">${myClasses.length}</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-tasks"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>Assignments</h3>
+                        <p class="card-number">${assignments.filter(a => a.uploadedBy === currentUser.name).length}</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>Classes</h3>
+                        <p class="card-number">${teachers.find(t => t.id === currentUser.teacherId)?.classes?.length || 0}</p>
+                    </div>
+                </div>
+            </div>
+            <h3 style="margin-top: 2rem; margin-bottom: 1rem;">Quick Actions</h3>
+            <p style="color: #7f8c8d; margin-bottom: 1.5rem;">Use the menu on the left to access attendance, grades, and assignments for your classes.</p>
+        `;
+    } else if (currentUser.role === 'student') {
+        // Student Dashboard
+        const myStudent = students.find(s => s.id === currentUser.studentId);
+        const myGrades = grades.filter(g => g.student === currentUser.name);
+        const myAttendance = attendance.filter(a => a.student === currentUser.name);
+        const presentCount = myAttendance.filter(a => a.status === 'Present').length;
+        dashboardHTML += `
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>Class</h3>
+                        <p class="card-number">${myStudent?.class || 'N/A'}</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-certificate"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>Grades Recorded</h3>
+                        <p class="card-number">${myGrades.length}</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>Attendance</h3>
+                        <p class="card-number">${myAttendance.length ? Math.round((presentCount / myAttendance.length) * 100) : 0}%</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-download"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>Assignments</h3>
+                        <p class="card-number">${assignments.filter(a => !a.uploadedBy || a.forClass === myStudent?.class).length}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else if (currentUser.role === 'parent') {
+        // Parent Dashboard
+        const myStudent = _getCurrentStudent();
+        dashboardHTML += `
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-child"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>Child</h3>
+                        <p style="font-size: 1.1rem; margin-top: 0.5rem;">${myStudent?.name || 'N/A'}</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>Class</h3>
+                        <p class="card-number">${myStudent?.class || 'N/A'}</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-credit-card"></i>
+                    </div>
+                    <div class="card-content">
+                        <h3>Balance Due</h3>
+                        <p class="card-number" style="color: #e74c3c;">₵${fees.filter(f => f.student === myStudent?.name).reduce((s, f) => s + (f.balance || 0), 0).toLocaleString()}</p>
+                    </div>
+                </div>
+            </div>
+            <h3 style="margin-top: 2rem; margin-bottom: 1rem;">Parent Portal</h3>
+            <p style="color: #7f8c8d;">Welcome! You can view your child's progress, attendance, fees, and communicate with teachers using the menu on the left.</p>
+        `;
+    }
+    
+    const dashboardContent = dashboardSection.querySelector('h2') ? dashboardSection : null;
+    if (dashboardContent) {
+        dashboardSection.innerHTML = dashboardHTML;
+    }
 }
 
 // ========================================
@@ -370,15 +695,29 @@ function loadStudents() {
     if (!students || students.length === 0) {
         // Seed sample students if none present
         students = [
-            { id: 'STU001', name: 'Adepa Nora', class: 'JHS 1', email: 'adepa@gmail.com', status: 'Active' },
-            { id: 'STU002', name: 'Nyarko Smith', class: 'JHS 2', email: 'smith@gmail.com', status: 'Active' },
-            { id: 'STU003', name: 'Owusu Johnson', class: 'JHS 1', email: 'owusu@gmail.com', status: 'Active' },
-            { id: 'STU004', name: 'Yeboah Sarah', class: 'JHS 3', email: 'sarah@gmail.com', status: 'Inactive' }
+            { id: 'STU001', firstName: 'Adepa', middleName: '', surname: 'Nora', dateOfBirth: '2010-05-15', name: 'Adepa Nora', class: 'JHS 1', email: 'adepa@gmail.com', status: 'Active' },
+            { id: 'STU002', firstName: 'Nyarko', middleName: 'John', surname: 'Smith', dateOfBirth: '2009-08-22', name: 'Nyarko John Smith', class: 'JHS 2', email: 'smith@gmail.com', status: 'Active' },
+            { id: 'STU003', firstName: 'Owusu', middleName: '', surname: 'Johnson', dateOfBirth: '2010-12-10', name: 'Owusu Johnson', class: 'JHS 1', email: 'owusu@gmail.com', status: 'Active' },
+            { id: 'STU004', firstName: 'Yeboah', middleName: 'Grace', surname: 'Sarah', dateOfBirth: '2011-03-18', name: 'Yeboah Grace Sarah', class: 'JHS 3', email: 'sarah@gmail.com', status: 'Inactive' }
         ];
         saveState();
     }
 
-    displayStudents(students);
+    // Update section title and actions based on role
+    const titleEl = document.getElementById('studentsSectionTitle');
+    if (currentUser && currentUser.role === 'teacher') {
+        if (titleEl) titleEl.textContent = 'My Students';
+        
+        // Filter students for this teacher's classes
+        const teacher = teachers.find(t => t.id === currentUser.teacherId);
+        const myClasses = teacher && teacher.classes ? teacher.classes : [];
+        const myStudents = students.filter(s => myClasses.includes(s.class));
+        displayStudents(myStudents);
+    } else {
+        if (titleEl) titleEl.textContent = 'Student Management';
+        displayStudents(students);
+    }
+    
     updateStudentSelects();
 }
 
@@ -407,16 +746,25 @@ function displayStudents(studentList) {
     }
     
     // Add data-label attributes for responsive stacked-card layout on small screens
+    const isTeacher = currentUser && currentUser.role === 'teacher';
     tbody.innerHTML = studentList.map(student => `
         <tr>
             <td data-label="Student ID">${student.id}</td>
             <td data-label="Name">${student.name}</td>
             <td data-label="Class">${student.class}</td>
             <td data-label="Email">${student.email}</td>
-            <td data-label="Status"><span class="badge ${student.status.toLowerCase()}" onclick="toggleStudentStatus('${student.id}')" title="Click to toggle status">${student.status}</span></td>
+            <td data-label="Status">
+                <span class="badge ${student.status.toLowerCase()}" ${!isTeacher ? `onclick="toggleStudentStatus('${student.id}')"` : ''} ${!isTeacher ? 'title="Click to toggle status" style="cursor: pointer;"' : ''}>
+                    ${student.status}
+                </span>
+            </td>
             <td data-label="Actions">
-                <button class="btn btn-small btn-primary" onclick="editStudent('${student.id}')">Edit</button>
-                <button class="btn btn-small btn-danger" onclick="deleteStudent('${student.id}')">Delete</button>
+                ${!isTeacher ? `
+                    <button class="btn btn-small btn-primary" onclick="editStudent('${student.id}')">Edit</button>
+                    <button class="btn btn-small btn-danger" onclick="deleteStudent('${student.id}')">Delete</button>
+                ` : `
+                    <button class="btn btn-small btn-secondary" onclick="viewStudentProfile('${student.id}')" title="View profile">View</button>
+                `}
             </td>
         </tr>
     `).join('');
@@ -426,20 +774,33 @@ function showStudentForm() {
     const modalBody = document.getElementById('modalBody');
     modalBody.innerHTML = `
         <h3>${editingStudentId ? 'Edit Student' : 'Add New Student'}</h3>
-        <form id="studentForm" onsubmit="saveStudent(event)">
+        <form id="studentForm" onsubmit="saveStudent(event)" style="max-height: 80vh; overflow-y: auto;">
+            <h4 style="margin-top: 1rem; margin-bottom: 0.75rem; border-bottom: 2px solid #3498db; padding-bottom: 0.5rem;">Student Information</h4>
             <div class="form-group">
-                <label for="studentName">Full Name</label>
-                <input type="text" id="studentName" required>
+                <label for="studentFirstName">First Name</label>
+                <input type="text" id="studentFirstName" required>
             </div>
             <div class="form-group">
-                <label for="studentEmail">Email</label>
-                <input type="email" id="studentEmail" required>
+                <label for="studentMiddleName">Middle Name</label>
+                <input type="text" id="studentMiddleName">
+            </div>
+            <div class="form-group">
+                <label for="studentSurname">Surname</label>
+                <input type="text" id="studentSurname" required>
+            </div>
+            <div class="form-group">
+                <label for="studentDateOfBirth">Date of Birth</label>
+                <input type="date" id="studentDateOfBirth" required>
+            </div>
+            <div class="form-group">
+                <label for="studentEmail">Email (Optional)</label>
+                <input type="email" id="studentEmail">
             </div>
             <div class="form-group">
                 <label for="studentClass">Class</label>
                 <select id="studentClass" required>
                     <option value="">All Classes</option>
-                    <option value="Nursery">Nuserary</option>
+                    <option value="Nursery">Nursery</option>
                     <option value="KG1">KG 1</option>
                     <option value="KG2">KG 2</option>
                     <option value="Class1">Class 1</option>
@@ -461,7 +822,44 @@ function showStudentForm() {
                 <label for="studentAddress">Address</label>
                 <textarea id="studentAddress"></textarea>
             </div>
-            <button type="submit" class="btn btn-primary">${editingStudentId ? 'Update Student' : 'Save Student'}</button>
+
+            <h4 style="margin-top: 1.5rem; margin-bottom: 0.75rem; border-bottom: 2px solid #27ae60; padding-bottom: 0.5rem;">Father's Details</h4>
+            <div class="form-group">
+                <label for="fatherName">Father's Name</label>
+                <input type="text" id="fatherName">
+            </div>
+            <div class="form-group">
+                <label for="fatherPhone">Father's Phone</label>
+                <input type="tel" id="fatherPhone">
+            </div>
+            <div class="form-group">
+                <label for="fatherEmail">Father's Email</label>
+                <input type="email" id="fatherEmail">
+            </div>
+            <div class="form-group">
+                <label for="fatherOccupation">Father's Occupation</label>
+                <input type="text" id="fatherOccupation">
+            </div>
+
+            <h4 style="margin-top: 1.5rem; margin-bottom: 0.75rem; border-bottom: 2px solid #e74c3c; padding-bottom: 0.5rem;">Mother's Details</h4>
+            <div class="form-group">
+                <label for="motherName">Mother's Name</label>
+                <input type="text" id="motherName">
+            </div>
+            <div class="form-group">
+                <label for="motherPhone">Mother's Phone</label>
+                <input type="tel" id="motherPhone">
+            </div>
+            <div class="form-group">
+                <label for="motherEmail">Mother's Email</label>
+                <input type="email" id="motherEmail">
+            </div>
+            <div class="form-group">
+                <label for="motherOccupation">Mother's Occupation</label>
+                <input type="text" id="motherOccupation">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">${editingStudentId ? 'Update Student' : 'Save Student'}</button>
         </form>
     `;
     openModal();
@@ -471,11 +869,25 @@ function showStudentForm() {
         const student = students.find(s => s.id === editingStudentId);
         if (student) {
             setTimeout(() => {
-                document.getElementById('studentName').value = student.name || '';
+                document.getElementById('studentFirstName').value = student.firstName || '';
+                document.getElementById('studentMiddleName').value = student.middleName || '';
+                document.getElementById('studentSurname').value = student.surname || '';
+                document.getElementById('studentDateOfBirth').value = student.dateOfBirth || '';
                 document.getElementById('studentEmail').value = student.email || '';
                 document.getElementById('studentClass').value = student.class || '';
                 document.getElementById('studentPhone').value = student.phone || '';
                 document.getElementById('studentAddress').value = student.address || '';
+                
+                // Parent details
+                document.getElementById('fatherName').value = student.fatherName || '';
+                document.getElementById('fatherPhone').value = student.fatherPhone || '';
+                document.getElementById('fatherEmail').value = student.fatherEmail || '';
+                document.getElementById('fatherOccupation').value = student.fatherOccupation || '';
+                
+                document.getElementById('motherName').value = student.motherName || '';
+                document.getElementById('motherPhone').value = student.motherPhone || '';
+                document.getElementById('motherEmail').value = student.motherEmail || '';
+                document.getElementById('motherOccupation').value = student.motherOccupation || '';
             }, 50);
         }
     }
@@ -483,34 +895,72 @@ function showStudentForm() {
 
 function saveStudent(event) {
     event.preventDefault();
-    const name = document.getElementById('studentName').value.trim();
+    const firstName = document.getElementById('studentFirstName').value.trim();
+    const middleName = document.getElementById('studentMiddleName').value.trim();
+    const surname = document.getElementById('studentSurname').value.trim();
+    const dateOfBirth = document.getElementById('studentDateOfBirth').value;
     const email = document.getElementById('studentEmail').value.trim();
     const studentClass = document.getElementById('studentClass').value;
     const phone = document.getElementById('studentPhone').value.trim();
     const address = document.getElementById('studentAddress').value.trim();
+
+    // Parent details
+    const fatherName = document.getElementById('fatherName').value.trim();
+    const fatherPhone = document.getElementById('fatherPhone').value.trim();
+    const fatherEmail = document.getElementById('fatherEmail').value.trim();
+    const fatherOccupation = document.getElementById('fatherOccupation').value.trim();
+    
+    const motherName = document.getElementById('motherName').value.trim();
+    const motherPhone = document.getElementById('motherPhone').value.trim();
+    const motherEmail = document.getElementById('motherEmail').value.trim();
+    const motherOccupation = document.getElementById('motherOccupation').value.trim();
+
+    // Validate required fields
+    if (!firstName || !surname || !dateOfBirth) {
+        showToast('Please fill in all required fields (First Name, Surname, Date of Birth)', 'error');
+        return;
+    }
+
+    // Construct full name from parts
+    const fullName = middleName ? `${firstName} ${middleName} ${surname}` : `${firstName} ${surname}`;
 
     if (editingStudentId) {
         // Update existing
         const student = students.find(s => s.id === editingStudentId);
         if (student) {
             const oldName = student.name;
-            student.name = name;
+            student.firstName = firstName;
+            student.middleName = middleName;
+            student.surname = surname;
+            student.dateOfBirth = dateOfBirth;
+            student.name = fullName;
             student.email = email;
             student.class = studentClass;
             student.phone = phone;
             student.address = address;
+            
+            // Parent details
+            student.fatherName = fatherName;
+            student.fatherPhone = fatherPhone;
+            student.fatherEmail = fatherEmail;
+            student.fatherOccupation = fatherOccupation;
+            student.motherName = motherName;
+            student.motherPhone = motherPhone;
+            student.motherEmail = motherEmail;
+            student.motherOccupation = motherOccupation;
+            
             saveState();
             
             // Update all references in attendance, grades, and fees if name changed
-            if (oldName !== name) {
+            if (oldName !== fullName) {
                 attendance.forEach(att => {
-                    if (att.student === oldName) att.student = name;
+                    if (att.student === oldName) att.student = fullName;
                 });
                 grades.forEach(g => {
-                    if (g.student === oldName) g.student = name;
+                    if (g.student === oldName) g.student = fullName;
                 });
                 fees.forEach(f => {
-                    if (f.student === oldName) f.student = name;
+                    if (f.student === oldName) f.student = fullName;
                 });
                 saveState();
             }
@@ -523,11 +973,26 @@ function saveStudent(event) {
     } else {
         const newStudent = {
             id: 'STU' + String(students.length + 1).padStart(3, '0'),
-            name: name,
+            firstName: firstName,
+            middleName: middleName,
+            surname: surname,
+            dateOfBirth: dateOfBirth,
+            name: fullName,
             class: studentClass,
             email: email,
             phone: phone,
             address: address,
+            
+            // Parent details
+            fatherName: fatherName,
+            fatherPhone: fatherPhone,
+            fatherEmail: fatherEmail,
+            fatherOccupation: fatherOccupation,
+            motherName: motherName,
+            motherPhone: motherPhone,
+            motherEmail: motherEmail,
+            motherOccupation: motherOccupation,
+            
             status: 'Active'
         };
         students.push(newStudent);
@@ -540,6 +1005,46 @@ function saveStudent(event) {
     closeModal();
     loadStudents();
     loadDashboardData();
+}
+
+function viewStudentProfile(id) {
+    const student = students.find(s => s.id === id);
+    if (!student) return showToast('Student not found', 'error');
+    
+    const modalBody = document.getElementById('modalBody');
+    modalBody.innerHTML = `
+        <h3>${student.name}'s Profile</h3>
+        <div style="display: grid; gap: 1rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div>
+                    <label style="font-weight: 600; color: #2c3e50;">Student ID</label>
+                    <p style="color: #7f8c8d;">${student.id}</p>
+                </div>
+                <div>
+                    <label style="font-weight: 600; color: #2c3e50;">Name</label>
+                    <p style="color: #7f8c8d;">${student.name}</p>
+                </div>
+                <div>
+                    <label style="font-weight: 600; color: #2c3e50;">Class</label>
+                    <p style="color: #7f8c8d;">${student.class}</p>
+                </div>
+                <div>
+                    <label style="font-weight: 600; color: #2c3e50;">Email</label>
+                    <p style="color: #7f8c8d;">${student.email}</p>
+                </div>
+                <div>
+                    <label style="font-weight: 600; color: #2c3e50;">Date of Birth</label>
+                    <p style="color: #7f8c8d;">${student.dateOfBirth || 'N/A'}</p>
+                </div>
+                <div>
+                    <label style="font-weight: 600; color: #2c3e50;">Status</label>
+                    <p style="color: #7f8c8d;"><span class="badge ${student.status.toLowerCase()}">${student.status}</span></p>
+                </div>
+            </div>
+        </div>
+        <button class="btn btn-secondary" onclick="closeModal()" style="margin-top: 1rem; width: 100%;">Close</button>
+    `;
+    openModal();
 }
 
 function editStudent(id) {
@@ -608,7 +1113,17 @@ function loadAttendance() {
             ];
         saveState();
     }
-    displayAttendance(attendance);
+    
+    // Filter attendance based on role
+    let attendanceToDisplay = attendance;
+    if (currentUser && currentUser.role === 'teacher') {
+        // Teachers see attendance for only their classes
+        const teacher = teachers.find(t => t.id === currentUser.teacherId);
+        const myClasses = teacher && teacher.classes ? teacher.classes : [];
+        attendanceToDisplay = attendance.filter(a => myClasses.includes(a.class));
+    }
+    
+    displayAttendance(attendanceToDisplay);
 }
 
 function displayAttendance(attendanceList) {
@@ -624,11 +1139,11 @@ function displayAttendance(attendanceList) {
         const actualIndex = attendance.findIndex(a => a.student === att.student && a.class === att.class && a.date === att.date && a.status === att.status);
         return `
         <tr>
-            <td>${att.student}</td>
-            <td>${att.class}</td>
-            <td>${att.date}</td>
-            <td><span class="badge ${att.status.toLowerCase()}">${att.status}</span></td>
-            <td>
+            <td data-label="Student Name">${att.student}</td>
+            <td data-label="Class">${att.class}</td>
+            <td data-label="Date">${att.date}</td>
+            <td data-label="Status"><span class="badge ${att.status.toLowerCase()}">${att.status}</span></td>
+            <td data-label="Action">
                 <button class="btn btn-small btn-primary" onclick="editAttendance(${actualIndex})">Edit</button>
                 <button class="btn btn-small btn-danger" onclick="deleteAttendance(${actualIndex})">Delete</button>
             </td>
@@ -653,6 +1168,18 @@ function filterAttendance() {
 }
 
 function showAttendanceForm() {
+    // Check if user is authorized to record attendance
+    if (currentUser && currentUser.role !== 'admin' && currentUser.role !== 'teacher') {
+        return showToast('Only admins and teachers can record attendance', 'error');
+    }
+    
+    // Get available classes based on role
+    let availableClasses = ['Nursery', 'KG1', 'KG2', 'Class1', 'Class2', 'Class3', 'Class4', 'Class5', 'Class6', 'JHS1', 'JHS2', 'JHS3'];
+    if (currentUser && currentUser.role === 'teacher') {
+        const teacher = teachers.find(t => t.id === currentUser.teacherId);
+        availableClasses = teacher && teacher.classes ? teacher.classes : [];
+    }
+    
     const modalBody = document.getElementById('modalBody');
     modalBody.innerHTML = `
         <h3>Record Attendance</h3>
@@ -660,26 +1187,14 @@ function showAttendanceForm() {
             <div class="form-group">
                 <label for="attendanceClass">Class</label>
                 <select id="attendanceClass" required>
-                    <option value="">All Classes</option>
-                    <option value="Nursery">Nuserary</option>
-                    <option value="KG1">KG 1</option>
-                    <option value="KG2">KG 2</option>
-                    <option value="Class1">Class 1</option>
-                    <option value="Class2">Class 2</option>
-                    <option value="Class3">Class 3</option>
-                    <option value="Class4">Class 4</option>
-                    <option value="Class5">Class 5</option>
-                    <option value="Class6">Class 6</option>
-                    <option value="JHS1">JHS 1</option>
-                    <option value="JHS2">JHS 2</option>
-                    <option value="JHS3">JHS 3</option>   
+                    <option value="">Select a class</option>
+                    ${availableClasses.map(cls => `<option value="${cls}">${cls}</option>`).join('')}
                 </select>
             </div>
             <div class="form-group">
                 <label for="attendanceStudentSelect">Student</label>
-                <select id="attendanceStudentSelect" class="student-select" required>
-                    <option value="">Select Student</option>
-                    ${students.map(s => `<option value="${s.id}" data-class="${s.class}">${s.name} (${s.class})</option>`).join('')}
+                <select id="attendanceStudentSelect" required>
+                    <option value="">Select class first</option>
                 </select>
             </div>
             <div class="form-group">
@@ -700,37 +1215,27 @@ function showAttendanceForm() {
     `;
     openModal();
 
-    // After modal renders, filter students by selected class and wire class->student filtering
+    // After modal renders, filter students by selected class
     setTimeout(() => {
         const classSelect = document.getElementById('attendanceClass');
         const studentSelect = document.getElementById('attendanceStudentSelect');
         if (!classSelect || !studentSelect) return;
 
-        // populate students for the currently selected class (if any)
+        // Populate students for the currently selected class
         function populateForClass(cls) {
-            const opts = students.filter(s => !cls || s.class === cls).map(s => `<option value="${s.id}" data-class="${s.class}">${s.name} (${s.class})</option>`).join('');
-            const prev = studentSelect.value;
-            studentSelect.innerHTML = `<option value="">Select Student</option>` + opts;
-            // try to re-select previous selection if still present (match by id or name)
-            if (prev) {
-                const match = students.find(s => s.id === prev || s.name === prev);
-                if (match) studentSelect.value = match.id;
-            }
-        }
-
-        // initial state: student select disabled until a class is chosen
-        studentSelect.innerHTML = `<option value="">Select class first</option>`;
-        studentSelect.disabled = true;
-
-        classSelect.addEventListener('change', function() {
-            const cls = this.value;
             if (!cls) {
                 studentSelect.innerHTML = `<option value="">Select class first</option>`;
                 studentSelect.disabled = true;
-            } else {
-                populateForClass(cls);
-                studentSelect.disabled = false;
+                return;
             }
+            const classStudents = students.filter(s => s.class === cls);
+            const opts = classStudents.map(s => `<option value="${s.id}" data-class="${s.class}">${s.name}</option>`).join('');
+            studentSelect.innerHTML = `<option value="">Select Student</option>` + opts;
+            studentSelect.disabled = false;
+        }
+
+        classSelect.addEventListener('change', function() {
+            populateForClass(this.value);
         });
     }, 20);
 }
@@ -830,7 +1335,23 @@ function loadGrades() {
         ];
         saveState();
     }
-    displayGrades(grades);
+    
+    // Filter grades based on user role
+    let gradesToDisplay = grades;
+    if (currentUser && currentUser.role === 'student') {
+        // Students see only their own grades
+        gradesToDisplay = grades.filter(g => g.student === currentUser.name);
+    } else if (currentUser && currentUser.role === 'teacher') {
+        // Teachers see only their students' grades
+        const teacher = teachers.find(t => t.id === currentUser.teacherId);
+        const myClasses = teacher && teacher.classes ? teacher.classes : [];
+        gradesToDisplay = grades.filter(g => {
+            const student = students.find(s => s.name === g.student);
+            return student && myClasses.includes(student.class);
+        });
+    }
+    
+    displayGrades(gradesToDisplay);
 }
 
 function displayGrades(gradesList) {
@@ -841,20 +1362,25 @@ function displayGrades(gradesList) {
         return;
     }
     
+    const isStudentView = currentUser && currentUser.role === 'student';
+    const isTeacherView = currentUser && currentUser.role === 'teacher';
+    
     tbody.innerHTML = gradesList.map((grade) => {
         // Find the actual index in the original grades array
         const actualIndex = grades.findIndex(g => g.student === grade.student && g.subject === grade.subject);
         return `
         <tr>
-            <td>${grade.student}</td>
-            <td>${grade.subject}</td>
-            <td>${grade.classTest}</td>
-            <td>${grade.assignment}</td>
-            <td>${grade.exam}</td>
-            <td>${grade.total}</td>
-            <td>
-                <button class="btn btn-small btn-primary" onclick="editGrade(${actualIndex})">Edit</button>
-                <button class="btn btn-small btn-danger" onclick="deleteGrade(${actualIndex})">Delete</button>
+            <td data-label="Student Name">${grade.student}</td>
+            <td data-label="Subject">${grade.subject}</td>
+            <td data-label="Class Test">${grade.classTest}</td>
+            <td data-label="Assignment">${grade.assignment}</td>
+            <td data-label="Exam">${grade.exam}</td>
+            <td data-label="Total Grade">${grade.total}</td>
+            <td data-label="Action">
+                ${!isStudentView ? `
+                    <button class="btn btn-small btn-primary" onclick="editGrade(${actualIndex})">Edit</button>
+                    <button class="btn btn-small btn-danger" onclick="deleteGrade(${actualIndex})">Delete</button>
+                ` : ''}
             </td>
         </tr>
     `;
@@ -879,15 +1405,25 @@ function filterGrades() {
 }
 
 function showGradeForm() {
+    // Only allow teachers to enter grades
+    if (currentUser && currentUser.role !== 'teacher') {
+        return showToast('Only teachers can enter grades', 'error');
+    }
+    
+    // Get students in this teacher's classes
+    const teacher = teachers.find(t => t.id === currentUser.teacherId);
+    const myClasses = teacher && teacher.classes ? teacher.classes : [];
+    const myStudents = students.filter(s => myClasses.includes(s.class));
+    
     const modalBody = document.getElementById('modalBody');
     modalBody.innerHTML = `
         <h3>Enter Grades</h3>
         <form id="gradeForm" onsubmit="saveGrade(event)">
             <div class="form-group">
                 <label for="gradeStudent">Student</label>
-                <select id="gradeStudent" class="student-select" required>
+                <select id="gradeStudent" required>
                     <option value="">Select Student</option>
-                    ${students.map(s => `<option value="${s.id}" data-class="${s.class}">${s.name} (${s.class})</option>`).join('')}
+                    ${myStudents.map(s => `<option value="${s.id}" data-class="${s.class}">${s.name} (${s.class})</option>`).join('')}
                 </select>
             </div>
             <div class="form-group">
@@ -1186,7 +1722,7 @@ function downloadReceipt(index) {
     if (!inv) return showToast('Invoice not found', 'error');
     const receiptHtml = `
         <html><head><title>Receipt</title><style>body{font-family:Arial;padding:20px}h2{color:#333}</style>
-        <nav>GRPS SMS</nav>
+        <nav>${settings.schoolName}</nav>
         </head><body>
         <h2>Payment Receipt</h2>
         <p><strong>Invoice ID:</strong> ${inv.id || ('INV' + index)}</p>
@@ -1195,13 +1731,179 @@ function downloadReceipt(index) {
         <p><strong>Balance:</strong> ${formatCurrency(inv.balance, inv.currency)}</p>
         <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
         <hr>
-        <p>Glory Regin Preparatory School</p>
+        <p>${settings.schoolName}</p>
         </body></html>
     `;
     const w = window.open('', '_blank');
     w.document.write(receiptHtml);
     w.document.close();
     w.print();
+}
+
+// ========================================
+// System Settings (Admin) - change school name, logo, academic year, term dates
+// ========================================
+
+function showSystemSettings() {
+    const modalBody = document.getElementById('modalBody');
+    modalBody.innerHTML = `
+        <h3>System Settings</h3>
+        <form id="settingsForm" onsubmit="saveSystemSettings(event)">
+            <div class="form-group">
+                <label for="schoolName">School Name</label>
+                <input id="schoolName" type="text" value="${settings.schoolName || ''}" required>
+            </div>
+            <div class="form-group">
+                <label for="schoolLogo">Logo URL (optional)</label>
+                <input id="schoolLogo" type="text" value="${settings.logoUrl || ''}" placeholder="https://...">
+            </div>
+            <div class="form-group">
+                <label for="academicYear">Academic Year</label>
+                <input id="academicYear" type="text" value="${settings.academicYear || ''}">
+            </div>
+            <div class="form-group">
+                <label for="termStart">Term Start Date</label>
+                <input id="termStart" type="date" value="${settings.termStart || ''}">
+            </div>
+            <div class="form-group">
+                <label for="termEnd">Term End Date</label>
+                <input id="termEnd" type="date" value="${settings.termEnd || ''}">
+            </div>
+            <button class="btn btn-primary" type="submit">Save Settings</button>
+        </form>
+    `;
+    openModal();
+}
+
+function saveSystemSettings(e) {
+    e.preventDefault();
+    settings.schoolName = document.getElementById('schoolName').value.trim() || settings.schoolName;
+    settings.logoUrl = document.getElementById('schoolLogo').value.trim() || settings.logoUrl;
+    settings.academicYear = document.getElementById('academicYear').value.trim() || settings.academicYear;
+    settings.termStart = document.getElementById('termStart').value || settings.termStart;
+    settings.termEnd = document.getElementById('termEnd').value || settings.termEnd;
+    saveState();
+    applySettingsToUI();
+    closeModal();
+    showToast('System settings saved', 'success');
+}
+
+function applySettingsToUI() {
+    // Update header and branding elements
+    const authHeader = document.querySelector('.auth-header h1');
+    if (authHeader) authHeader.textContent = settings.schoolName || 'School Management System';
+    const brand = document.querySelector('.navbar-brand h2');
+    if (brand) brand.textContent = settings.schoolName ? (settings.schoolName.split(' ').slice(0,3).join(' ') ) : 'SMS';
+}
+
+// ========================================
+// Admin: User Management (create/update/delete users)
+// ========================================
+
+function showUserManagement() {
+    const modalBody = document.getElementById('modalBody');
+    modalBody.innerHTML = `
+        <h3>User Management</h3>
+        <div style="margin-bottom:0.5rem;"><button class="btn btn-primary" onclick="showCreateUserForm()">Create User</button></div>
+        <div id="userManagementList"></div>
+    `;
+    openModal();
+    displayUsers();
+}
+
+function displayUsers() {
+    const el = document.getElementById('userManagementList');
+    if (!users || users.length === 0) {
+        el.innerHTML = '<p class="text-center">No users</p>';
+        return;
+    }
+    el.innerHTML = `<table class="data-table"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Action</th></tr></thead><tbody>` +
+        users.map((u,i) => `<tr><td>${u.id}</td><td>${u.name}</td><td>${u.email}</td><td>${u.role}</td><td><button class="btn btn-small btn-primary" onclick="editUser('${u.id}')">Edit</button> <button class="btn btn-small btn-danger" onclick="deleteUser('${u.id}')">Delete</button></td></tr>`).join('') + `</tbody></table>`;
+}
+
+function showCreateUserForm() {
+    const modalBody = document.getElementById('modalBody');
+    modalBody.innerHTML = `
+        <h3>Create User</h3>
+        <form onsubmit="saveUser(event)">
+            <div class="form-group"><label>Name</label><input id="newUserName" required></div>
+            <div class="form-group"><label>Email</label><input id="newUserEmail" type="email" required></div>
+            <div class="form-group">
+                <label>Password</label>
+                <div class="password-field-wrapper">
+                    <input id="newUserPassword" type="password" required style="padding-right: 40px; width: 100%;">
+                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility('newUserPassword')" aria-label="Toggle password visibility">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="form-group"><label>Role</label><select id="newUserRole" required><option value="admin">Administrator</option><option value="teacher">Teacher</option><option value="student">Student</option><option value="parent">Parent</option></select></div>
+            <button class="btn btn-primary" type="submit">Create</button>
+        </form>
+    `;
+}
+
+function saveUser(e) {
+    e.preventDefault();
+    const name = document.getElementById('newUserName').value.trim();
+    const email = document.getElementById('newUserEmail').value.trim();
+    const password = document.getElementById('newUserPassword').value;
+    const role = document.getElementById('newUserRole').value;
+    if (!name || !email || !password || !role) return showToast('Please fill all user fields','error');
+    const id = 'USR' + String(users.length + 1).padStart(3,'0');
+    users.push({ id, name, email, password, role });
+    saveState();
+    showToast('User created', 'success');
+    closeModal();
+    displayUsers();
+}
+
+function editUser(id) {
+    const u = users.find(x => x.id === id);
+    if (!u) return showToast('User not found','error');
+    const modalBody = document.getElementById('modalBody');
+    modalBody.innerHTML = `
+        <h3>Edit User</h3>
+        <form onsubmit="updateUser(event,'${id}')">
+            <div class="form-group"><label>Name</label><input id="editUserName" value="${u.name}" required></div>
+            <div class="form-group"><label>Email</label><input id="editUserEmail" type="email" value="${u.email}" required></div>
+            <div class="form-group">
+                <label>Password (leave blank to keep)</label>
+                <div class="password-field-wrapper">
+                    <input id="editUserPassword" type="password" style="padding-right: 40px; width: 100%;">
+                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility('editUserPassword')" aria-label="Toggle password visibility">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="form-group"><label>Role</label><select id="editUserRole" required><option value="admin" ${u.role==='admin'?'selected':''}>Administrator</option><option value="teacher" ${u.role==='teacher'?'selected':''}>Teacher</option><option value="student" ${u.role==='student'?'selected':''}>Student</option><option value="parent" ${u.role==='parent'?'selected':''}>Parent</option></select></div>
+            <button class="btn btn-primary" type="submit">Update</button>
+        </form>
+    `;
+}
+
+function updateUser(e,id) {
+    e.preventDefault();
+    const u = users.find(x => x.id === id);
+    if (!u) return showToast('User not found','error');
+    u.name = document.getElementById('editUserName').value.trim();
+    u.email = document.getElementById('editUserEmail').value.trim();
+    const pw = document.getElementById('editUserPassword').value;
+    if (pw) u.password = pw;
+    u.role = document.getElementById('editUserRole').value;
+    saveState();
+    showToast('User updated', 'success');
+    displayUsers();
+}
+
+function deleteUser(id) {
+    showConfirm('Delete this user account?', function(confirmed) {
+        if (!confirmed) return;
+        users = users.filter(u => u.id !== id);
+        saveState();
+        showToast('User deleted', 'success');
+        displayUsers();
+    });
 }
 
 // Payment history modal
@@ -1555,6 +2257,395 @@ function showNoticeForm() {
     openModal();
 }
 
+// ========================================
+// Assignments: upload by teachers, download by students/parents
+// ========================================
+
+function showAssignmentUpload() {
+    // Only teachers can upload assignments
+    if (currentUser && currentUser.role !== 'teacher') {
+        return showToast('Only teachers can upload assignments', 'error');
+    }
+    
+    // Get available classes for this teacher
+    const teacher = teachers.find(t => t.id === currentUser.teacherId);
+    const teacherClasses = teacher && teacher.classes ? teacher.classes : [];
+    
+    const modalBody = document.getElementById('modalBody');
+    modalBody.innerHTML = `
+        <h3>Upload Assignment / Resource</h3>
+        <form id="assignmentForm" onsubmit="saveAssignment(event)">
+            <div class="form-group">
+                <label for="assignmentTitle">Title</label>
+                <input type="text" id="assignmentTitle" required>
+            </div>
+            <div class="form-group">
+                <label for="assignmentDesc">Description</label>
+                <textarea id="assignmentDesc" style="height:100px;"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="assignmentFile">File (optional)</label>
+                <input type="file" id="assignmentFile" accept="*/*">
+            </div>
+            <div class="form-group">
+                <label for="assignmentClass">Target Class</label>
+                <select id="assignmentClass" required>
+                    <option value="">Select a class</option>
+                    ${teacherClasses.map(cls => `<option value="${cls}">${cls}</option>`).join('')}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Upload</button>
+        </form>
+    `;
+    openModal();
+}
+
+function saveAssignment(e) {
+    e.preventDefault();
+    const title = document.getElementById('assignmentTitle').value.trim();
+    const desc = document.getElementById('assignmentDesc').value.trim();
+    const fileInput = document.getElementById('assignmentFile');
+    const targetClass = document.getElementById('assignmentClass').value || '';
+    
+    if (!targetClass) {
+        return showToast('Please select a target class', 'error');
+    }
+    
+    let fileMeta = null;
+    if (fileInput && fileInput.files && fileInput.files.length) {
+        const f = fileInput.files[0];
+        const url = URL.createObjectURL(f);
+        fileMeta = { name: f.name, size: f.size, type: f.type, url: url };
+    }
+
+    const id = Date.now() + Math.floor(Math.random()*1000);
+    const uploadedBy = currentUser ? (currentUser.name || currentUser.email || currentUser.teacherId || 'Unknown') : 'Unknown';
+    const item = { 
+        id, 
+        title, 
+        description: desc, 
+        desc: desc,  // Keep both for compatibility
+        file: fileMeta, 
+        targetClass, 
+        uploadedBy, 
+        uploader: uploadedBy,  // Keep both for compatibility
+        date: new Date().toISOString().split('T')[0] 
+    };
+    assignments.unshift(item);
+    saveState();
+    closeModal();
+    showToast('Assignment uploaded successfully', 'success');
+    displayAssignments();
+}
+
+function displayAssignments() {
+    const container = document.getElementById('assignmentsContainer');
+    if (!container) return;
+    if (!assignments || assignments.length === 0) {
+        container.innerHTML = '<p class="text-center">No assignments yet</p>';
+        return;
+    }
+    
+    // Filter assignments based on role
+    let visible = assignments;
+    if (currentUser && (currentUser.role === 'student' || currentUser.role === 'parent')) {
+        // Students and parents only see assignments for their class
+        const student = _getCurrentStudent();
+        const studentClass = student?.class || '';
+        visible = assignments.filter(a => !a.targetClass || a.targetClass === '' || a.targetClass === studentClass);
+    } else if (currentUser && currentUser.role === 'teacher') {
+        // Teachers see assignments they uploaded
+        visible = assignments;
+    }
+
+    const isTeacher = currentUser && currentUser.role === 'teacher';
+    container.innerHTML = visible.map(a => `
+        <div class="notice-card">
+            <h4>${a.title}</h4>
+            <p class="notice-date">${a.date} • Uploaded by ${a.uploadedBy || a.uploader}</p>
+            <p>${a.description || a.desc}</p>
+            <p><strong>Target:</strong> ${a.targetClass || 'All Classes'}</p>
+            <div class="mt-2">
+                ${a.file ? `<a href="${a.file.url}" download="${a.file.name}" class="btn btn-secondary">Download (${a.file.name})</a>` : ''}
+                ${isTeacher || (currentUser && currentUser.role === 'admin') ? `<button class="btn btn-small btn-danger" onclick="deleteAssignment(${a.id})">Delete</button>` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+// Helper: get student object for current user (student or parent)
+function _getCurrentStudent() {
+    if (!currentUser) return null;
+    if (currentUser.role === 'student') {
+        return students.find(s => s.id === currentUser.studentId) || students.find(s => s.name === currentUser.name);
+    }
+    if (currentUser.role === 'parent') {
+        return students.find(s => s.id === currentUser.studentId) || students.find(s => s.name === currentUser.studentName);
+    }
+    return null;
+}
+
+// Student: My Profile
+function showMyProfile() {
+    const container = document.getElementById('myProfileDetails');
+    const attendanceEl = document.getElementById('myAttendanceSummary');
+    if (!container || !attendanceEl) return;
+    const student = _getCurrentStudent();
+    if (!student) {
+        container.innerHTML = '<p class="text-center">Profile not available</p>';
+        attendanceEl.innerHTML = '<p class="text-center">No attendance data</p>';
+        return;
+    }
+    container.innerHTML = `
+        <p><strong>Admission No:</strong> ${student.id}</p>
+        <p><strong>Name:</strong> ${student.name}</p>
+        <p><strong>Class:</strong> ${student.class}</p>
+        <p><strong>Date of Birth:</strong> ${student.dateOfBirth || 'N/A'}</p>
+        <p><strong>Email:</strong> ${student.email || 'N/A'}</p>
+        <p><strong>Phone:</strong> ${student.phone || 'N/A'}</p>
+        <p><strong>Address:</strong> ${student.address || 'N/A'}</p>
+    `;
+
+    // Attendance summary for this student
+    const records = attendance.filter(a => a.student === student.name);
+    const present = records.filter(r => r.status === 'Present').length;
+    const percent = records.length ? Math.round((present / records.length) * 100) : 0;
+    attendanceEl.innerHTML = `
+        <p><strong>Records:</strong> ${records.length}</p>
+        <p><strong>Present:</strong> ${present}</p>
+        <p><strong>Attendance Rate:</strong> ${percent}%</p>
+    `;
+    showSection('myProfile');
+}
+
+// Student: Result Checker (view in-page)
+function showMyResults() {
+    const container = document.getElementById('resultContainer');
+    if (!container) return;
+    const student = _getCurrentStudent();
+    if (!student) {
+        container.innerHTML = '<p class="text-center">No student selected</p>';
+        return;
+    }
+    const myGrades = grades.filter(g => g.student === student.name);
+    if (!myGrades.length) {
+        container.innerHTML = '<p class="text-center">No grades found</p>';
+        return;
+    }
+    container.innerHTML = `
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead><tr><th>Subject</th><th>Class Test</th><th>Assignment</th><th>Exam</th><th>Total</th></tr></thead>
+                <tbody>
+                    ${myGrades.map(g => `<tr><td>${g.subject}</td><td>${g.classTest}</td><td>${g.assignment}</td><td>${g.exam}</td><td>${g.total}</td></tr>`).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    showSection('resultChecker');
+}
+
+function downloadMyReport() {
+    const student = _getCurrentStudent();
+    if (!student) return showToast('Student not found', 'error');
+    const myGrades = grades.filter(g => g.student === student.name);
+    if (!myGrades.length) return showToast('No grades to download', 'info');
+    const headers = ['Student','Subject','Class Test','Assignment','Exam','Total'];
+    const rows = myGrades.map(g => [student.name, g.subject, g.classTest, g.assignment, g.exam, g.total]);
+    const csv = buildCSV(headers, rows);
+    const filename = `${student.id || student.name}_report_${settings.academicYear || ''}.csv`;
+    downloadCSV(filename, csv);
+}
+
+// Parent: View Child Progress
+function showChildProgress() {
+    if (!currentUser || currentUser.role !== 'parent') return showToast('Access denied', 'error');
+    const student = _getCurrentStudent();
+    const parentContent = document.getElementById('parentContent');
+    if (!parentContent) return;
+    if (!student) return parentContent.innerHTML = '<p class="text-center">No linked child found</p>';
+    const childGrades = grades.filter(g => g.student === student.name);
+    const remarks = childGrades.map(g => `<li>${g.subject}: ${g.total} — Teacher remark: ${g.remark || 'No remarks'}</li>`).join('');
+    parentContent.innerHTML = `
+        <h4>${student.name} (${student.id})</h4>
+        <p><strong>Class:</strong> ${student.class}</p>
+        <div class="table-responsive">
+            <table class="data-table"><thead><tr><th>Subject</th><th>Class Test</th><th>Assignment</th><th>Exam</th><th>Total</th></tr></thead><tbody>
+                ${childGrades.length ? childGrades.map(g => `<tr><td>${g.subject}</td><td>${g.classTest}</td><td>${g.assignment}</td><td>${g.exam}</td><td>${g.total}</td></tr>`).join('') : `<tr><td colspan="5" class="text-center">No grades found</td></tr>`}
+            </tbody></table>
+        </div>
+        <h4 class="mt-2">Teacher Remarks</h4>
+        <ul>${remarks || '<li>No remarks available</li>'}</ul>
+    `;
+    showSection('parentDashboard');
+}
+
+// Parent: Attendance alerts for their child
+function showChildAttendanceAlerts() {
+    if (!currentUser || currentUser.role !== 'parent') return showToast('Access denied', 'error');
+    const student = _getCurrentStudent();
+    const parentContent = document.getElementById('parentContent');
+    if (!parentContent) return;
+    if (!student) return parentContent.innerHTML = '<p class="text-center">No linked child found</p>';
+    const records = attendance.filter(a => a.student === student.name && a.status !== 'Present');
+    if (!records.length) {
+        parentContent.innerHTML = `<p class="text-center">No absences or alerts for ${student.name}</p>`;
+        return showSection('parentDashboard');
+    }
+    parentContent.innerHTML = `
+        <h4>Absences / Alerts for ${student.name}</h4>
+        <ul>${records.map(r => `<li>${r.date}: ${r.status}</li>`).join('')}</ul>
+    `;
+    showSection('parentDashboard');
+}
+
+// Parent/Student: Fee portal view limited to their student
+function showFeePortal() {
+    if (!currentUser || (currentUser.role !== 'parent' && currentUser.role !== 'student')) return showToast('Access denied', 'error');
+    const student = _getCurrentStudent();
+    if (!student) return showToast('No student linked', 'error');
+    
+    const parentContent = document.getElementById('parentContent');
+    const studentFees = fees.filter(f => f.student === student.name);
+    
+    // If called from modal (student), use modal
+    if (currentUser.role === 'student') {
+        const modalBody = document.getElementById('modalBody');
+        modalBody.innerHTML = `
+            <h3>Fee Summary for ${student.name}</h3>
+            <div id="feeSummary">
+                ${studentFees.length ? `<table class="data-table"><thead><tr><th>Invoice</th><th>Amount Due</th><th>Paid</th><th>Balance</th><th>Status</th><th>Due Date</th></tr></thead><tbody>${studentFees.map(f => `<tr><td>${f.id || ''}</td><td>${formatCurrency(f.amountDue,f.currency)}</td><td>${formatCurrency(f.amountPaid,f.currency)}</td><td>${formatCurrency(f.balance,f.currency)}</td><td>${f.status}</td><td>${f.dueDate || ''}</td></tr>`).join('')}</tbody></table>` : '<p class="text-center">No fee records</p>'}
+            </div>
+        `;
+        openModal();
+    }
+    // If called from parent dashboard, display inline
+    else if (currentUser.role === 'parent' && parentContent) {
+        let totalDue = 0, totalPaid = 0, totalBalance = 0;
+        if (studentFees.length) {
+            studentFees.forEach(f => {
+                totalDue += f.amountDue || 0;
+                totalPaid += f.amountPaid || 0;
+                totalBalance += f.balance || 0;
+            });
+        }
+        
+        parentContent.innerHTML = `
+            <div style="max-width: 800px; margin: 0 auto;">
+                <h3 style="margin-bottom: 1.5rem;">Fee Statement for ${student.name}</h3>
+                <div class="fee-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                    <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #3498db;">
+                        <p style="font-size: 0.9rem; color: #7f8c8d; margin: 0;">Total Amount Due</p>
+                        <p style="font-size: 1.5rem; font-weight: bold; color: #2c3e50; margin: 0.5rem 0 0 0;">${formatCurrency(totalDue, studentFees[0]?.currency || 'USD')}</p>
+                    </div>
+                    <div style="background: #f0fdf4; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #27ae60;">
+                        <p style="font-size: 0.9rem; color: #7f8c8d; margin: 0;">Total Amount Paid</p>
+                        <p style="font-size: 1.5rem; font-weight: bold; color: #27ae60; margin: 0.5rem 0 0 0;">${formatCurrency(totalPaid, studentFees[0]?.currency || 'USD')}</p>
+                    </div>
+                    <div style="background: #fef3c7; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #f39c12;">
+                        <p style="font-size: 0.9rem; color: #7f8c8d; margin: 0;">Balance Due</p>
+                        <p style="font-size: 1.5rem; font-weight: bold; color: #d68910; margin: 0.5rem 0 0 0;">${formatCurrency(totalBalance, studentFees[0]?.currency || 'USD')}</p>
+                    </div>
+                </div>
+                
+                ${studentFees.length ? `
+                    <h4 style="margin-top: 2rem; margin-bottom: 1rem;">Detailed Breakdown</h4>
+                    <div class="table-responsive">
+                        <table class="data-table" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Invoice</th>
+                                    <th>Amount Due</th>
+                                    <th>Paid</th>
+                                    <th>Balance</th>
+                                    <th>Status</th>
+                                    <th>Due Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${studentFees.map(f => `<tr><td>${f.id || ''}</td><td>${formatCurrency(f.amountDue, f.currency)}</td><td>${formatCurrency(f.amountPaid, f.currency)}</td><td>${formatCurrency(f.balance, f.currency)}</td><td><span style="padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.85rem; background: ${f.status === 'Paid' ? '#d4edda' : f.status === 'Pending' ? '#fff3cd' : '#f8d7da'}; color: ${f.status === 'Paid' ? '#155724' : f.status === 'Pending' ? '#856404' : '#721c24'};">${f.status}</span></td><td>${f.dueDate || ''}</td></tr>`).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                ` : '<p class="text-center" style="color: #7f8c8d;">No fee records available.</p>'}
+            </div>
+        `;
+    }
+}
+
+// Parent: Message a teacher of the child's class
+function showMessageTeacherForm() {
+    if (!currentUser || currentUser.role !== 'parent') return showToast('Access denied', 'error');
+    const student = _getCurrentStudent();
+    if (!student) return showToast('No student linked', 'error');
+    // find teachers for the class
+    const classTeachers = teachers.filter(t => Array.isArray(t.classes) ? t.classes.includes(student.class) : (t.class === student.class));
+    const modalBody = document.getElementById('modalBody');
+    modalBody.innerHTML = `
+        <h3>Send Message to Teacher</h3>
+        <form id="messageTeacherForm" onsubmit="sendMessageToTeacher(event)">
+            <div class="form-group">
+                <label for="messageTeacherSelect">Select Teacher</label>
+                <select id="messageTeacherSelect" required>
+                    ${classTeachers.length ? classTeachers.map(t => `<option value="${t.id}">${t.name} (${t.subjects ? t.subjects.join(', ') : ''})</option>`).join('') : `<option value="">No teacher found for ${student.class}</option>`}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="messageContent">Message</label>
+                <textarea id="messageContent" required style="height:120px;" placeholder="Type your message to the teacher..."></textarea>
+            </div>
+            <button class="btn btn-primary" type="submit">Send Message</button>
+        </form>
+    `;
+    openModal();
+}
+
+function sendMessageToTeacher(e) {
+    e.preventDefault();
+    const teacherId = document.getElementById('messageTeacherSelect').value;
+    const content = document.getElementById('messageContent').value.trim();
+    if (!teacherId || !content) return showToast('Please select teacher and write a message', 'error');
+    const teacher = teachers.find(t => t.id === teacherId);
+    const student = _getCurrentStudent();
+    const msg = { id: Date.now(), from: currentUser.name || currentUser.email, toTeacherId: teacherId, toTeacherName: teacher ? teacher.name : teacherId, studentId: student ? student.id : '', studentName: student ? student.name : '', content, date: new Date().toISOString() };
+    messages.push(msg);
+    saveState();
+    closeModal();
+    showToast('Message sent to teacher', 'success');
+}
+
+function deleteAssignment(id) {
+    showConfirm('Delete this assignment?', function(confirmed) {
+        if (!confirmed) return;
+        const idx = assignments.findIndex(a => a.id === id);
+        if (idx !== -1) {
+            const a = assignments.splice(idx,1)[0];
+            // revoke blob URL if present
+            if (a && a.file && a.file.url) URL.revokeObjectURL(a.file.url);
+            saveState();
+            showToast('Assignment deleted', 'success');
+            displayAssignments();
+        }
+    });
+}
+
+function showUploadHistory() {
+    // For teachers/admin: show their uploads only
+    const modalBody = document.getElementById('modalBody');
+    const uploader = currentUser ? (currentUser.name || currentUser.email) : '';
+    const my = assignments.filter(a => a.uploader === uploader);
+    modalBody.innerHTML = `
+        <h3>My Uploads</h3>
+        <div id="myUploadsList">${my.length ? '' : '<p class="text-center">No uploads found</p>'}</div>
+    `;
+    openModal();
+    const listEl = document.getElementById('myUploadsList');
+    if (my.length) {
+        listEl.innerHTML = `<table class="data-table"><thead><tr><th>Title</th><th>Date</th><th>Target</th><th>Action</th></tr></thead><tbody>` + my.map(m => `<tr><td>${m.title}</td><td>${m.date}</td><td>${m.targetClass || 'All'}</td><td>${m.file ? `<a href="${m.file.url}" download="${m.file.name}" class="btn btn-small btn-secondary">Download</a>` : ''} <button class="btn btn-small btn-danger" onclick="deleteAssignment(${m.id})">Delete</button></td></tr>`).join('') + `</tbody></table>`;
+    }
+}
+
+
 function saveNotice(event) {
     event.preventDefault();
     
@@ -1826,6 +2917,9 @@ function showToast(message, type = 'info') {
 // ========================================
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Attach login form event listener (was executing before DOM ready)
+    attachLoginFormListener();
+    
     // Set today's date in attendance form
     const today = new Date().toISOString().split('T')[0];
     const attendanceDateInput = document.getElementById('attendanceDate');
@@ -1852,6 +2946,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Restore session if remembered
     restoreSession();
+
+    // Apply persisted settings and show assignments
+    applySettingsToUI();
+    displayAssignments();
 
     // Listen for live student updates so open forms/update immediately
     document.addEventListener('studentsUpdated', function(e) {
@@ -1952,7 +3050,7 @@ function closeMobileSidebar() {
 // ========================================
 
 function saveState() {
-    const state = { students, teachers, attendance, grades, fees, notices, users, feeStructures, paymentHistory };
+    const state = { students, teachers, attendance, grades, fees, notices, users, feeStructures, paymentHistory, assignments, settings, messages };
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (e) {
@@ -1974,6 +3072,11 @@ function loadState() {
         users = state.users || [];
         feeStructures = state.feeStructures || [];
         paymentHistory = state.paymentHistory || [];
+        assignments = state.assignments || [];
+        settings = state.settings || settings;
+        messages = state.messages || [];
+        // apply settings to UI after load
+        applySettingsToUI();
         
         // Validate and sync student names across all modules
         validateStudentNames();
