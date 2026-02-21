@@ -34,6 +34,30 @@ const STORAGE_KEY = 'glory_regin_sms_v1';
 // Authentication Functions
 // ========================================
 
+// Navigate from home page to login with selected role
+function goToLogin(role) {
+    document.getElementById('homePage').classList.add('hidden');
+    document.getElementById('loginSection').classList.remove('hidden');
+    
+    // Pre-select the role and trigger the ID field toggle if needed
+    const userRoleSelect = document.getElementById('userRole');
+    userRoleSelect.value = role;
+    toggleIdField();
+    
+    // Focus on first input field
+    setTimeout(() => {
+        const firstInput = document.getElementById('email');
+        if (firstInput) firstInput.focus();
+    }, 200);
+}
+
+// Navigate back to home page
+function backToHome() {
+    document.getElementById('loginSection').classList.add('hidden');
+    document.getElementById('homePage').classList.remove('hidden');
+    document.getElementById('loginForm').reset();
+}
+
 // Attach login form listener after DOM loads
 function attachLoginFormListener() {
     const loginForm = document.getElementById('loginForm');
